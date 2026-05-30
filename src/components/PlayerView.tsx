@@ -232,7 +232,9 @@ export function PlayerView() {
         const result = await api.acceptTrack(currentTrack.path, targetFolder, acceptMode);
         if (result.ok) {
           addProcessedPath(currentTrack.path);
-          setStatus(currentTrack.id, "accepted");
+          // "moved" — файл удалён с диска, нельзя вернуться
+          // "accepted" — файл скопирован, можно вернуться
+          setStatus(currentTrack.id, acceptMode === "move" ? "moved" : "accepted");
           if (coverApplyMode === "onAccept" && currentTrack.cover) {
             await api.updateCoverOnAccept(targetFolder, currentTrack.name, currentTrack.cover);
           }
@@ -422,7 +424,7 @@ export function PlayerView() {
           </p>
           <div className="pt-8 text-muted-foreground">
             <p className="text-sm">✨ Ready to sort your music collection ✨</p>
-            <p className="text-xs mt-2">🎧 Drag & drop a folder or use the button above</p>
+            <p className="text-xs mt-2">🎧 Have a nice day 🎧</p>
           </div>
         </div>
       </div>

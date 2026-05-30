@@ -36,6 +36,8 @@ const QueueItem = memo(({
         return <AlertCircle className="w-3 h-3 md:w-4 md:h-4 text-gray-500 flex-shrink-0" />;
       case "played":
         return <Headphones className="w-3 h-3 md:w-4 md:h-4 text-purple-400 flex-shrink-0" />;
+      case "moved":
+        return <CheckCircle className="w-3 h-3 md:w-4 md:h-4 text-orange-400 flex-shrink-0" />;
       default:
         return <Music className="w-3 h-3 md:w-4 md:h-4 text-blue-400 flex-shrink-0" />;
     }
@@ -51,6 +53,8 @@ const QueueItem = memo(({
         return "⚠️ Error";
       case "played":
         return "🎧 Played";
+      case "moved":
+        return "→ Moved";
       default:
         return "⏳ Pending";
     }
@@ -60,8 +64,8 @@ const QueueItem = memo(({
     return cn(
       "flex items-start gap-2 md:gap-3 px-2 md:px-4 py-2 rounded-lg cursor-pointer transition-all duration-200",
       isCurrent && "bg-primary/10 border-l-2 border-primary",
-      (track.status === "error" || track.status === "played") && "opacity-70",
-      !isCurrent && track.status !== "error" && "hover:bg-accent hover:scale-[1.01]"
+      (track.status === "error" || track.status === "played" || track.status === "moved") && "opacity-70",
+      !isCurrent && track.status !== "error" && track.status !== "moved" && "hover:bg-accent hover:scale-[1.01]"
     );
   };
 
@@ -77,6 +81,7 @@ const QueueItem = memo(({
         <p className={cn(
           "text-xs md:text-sm truncate",
           track.status === "error" && "text-muted-foreground line-through",
+          track.status === "moved" && "text-orange-400",
           track.status === "played" && "text-purple-400",
           isCurrent && isPlaying && "text-primary font-medium"
         )}>
@@ -101,7 +106,7 @@ export function Queue() {
 
   // Мемоизированный обработчик клика
   const handleTrackClick = useCallback((index: number) => {
-    if (tracks[index].status === "error") return;
+    if (tracks[index].status === "error" || tracks[index].status === "moved") return;
     
     const currentTrack = tracks[currentIndex];
     if (currentTrack && currentIndex !== index && currentTrack.status === "pending") {

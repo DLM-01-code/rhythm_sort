@@ -128,7 +128,7 @@ export function useAudioEngine(audioRef: React.RefObject<HTMLAudioElement | null
 }
 
 // ========== useTrackUrl ==========
-export function useTrackUrl(track: { path: string; url?: string; id?: string; name?: string } | undefined) {
+export function useTrackUrl(track: { path: string; url?: string; id?: string; name?: string; status?: string } | undefined) {
   const [url, setUrl] = useState<string | undefined>(undefined);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -155,6 +155,14 @@ export function useTrackUrl(track: { path: string; url?: string; id?: string; na
 
       if (track.url) {
         setUrl(track.url);
+        setError(null);
+        return;
+      }
+
+      // ✅ FIX MOVE MODE: если трек перемещён — файла на диске уже нет
+      // "accepted" (Copy) — файл остался, читаем нормально
+      if (track.status === 'moved') {
+        setUrl(undefined);
         setError(null);
         return;
       }
@@ -244,7 +252,7 @@ export function useTrackUrl(track: { path: string; url?: string; id?: string; na
       if (revoked) URL.revokeObjectURL(revoked);
     };
   // ✅ FIX: зависим только от path/url/id — не от функций стора
-  }, [track?.path, track?.url, track?.id]);
+  }, [track?.path, track?.url, track?.id, track?.status]);
 
   return { url, error, isLoading };
 }

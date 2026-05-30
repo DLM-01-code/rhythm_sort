@@ -147,16 +147,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
 
                 <div className="flex items-center justify-between">
                   <Label className="text-foreground">Reject Mode</Label>
-                  <Select value={rejectMode} onValueChange={(v) => set("rejectMode", v as any)}>
-                    <SelectTrigger className="w-32 bg-background border-border">
-                      <SelectValue />
-                    </SelectTrigger>
-                    {/* ✅ FIX 4 */}
-                    <SelectContent className={SELECT_CONTENT_CLASS}>
-                      <SelectItem value="none">Skip Only</SelectItem>
-                      <SelectItem value="move">Move to Folder</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <span className="text-sm text-muted-foreground">Skip Only</span>
                 </div>
 
                 <div className="flex items-center justify-between">

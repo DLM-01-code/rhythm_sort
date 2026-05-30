@@ -1,143 +1,515 @@
-# 🎵 Sortify — Музыкальный сортировщик для диджеев
+# English
 
-**Sortify** — это программа, которая помогает быстро раскладывать музыку по папкам прямо во время прослушивания. Нажал клавишу — трек улетел в нужную папку.
+# 🎵 Rhythm Sort — Your Personal Music Sorter
 
----
-
-## 🚀 Как начать пользоваться
-
-### 1. Загрузить музыку
-Нажми кнопку **Source Folder** и выбери папку с твоими треками.  
-Все файлы появятся в очереди справа.
-
-### 2. Выбрать главную папку для одобренных треков
-Нажми **Target Folder** — сюда будут попадать треки, которые ты одобришь клавишей `→` (стрелка вправо).
-
-### 3. Настроить дополнительные папки (Split Mode)
-Если ты хочешь раскладывать треки по разным папкам (например, "DrumnBass", "House", "Chillout"), включи **Split Mode**.
+Rhythm Sort is a Windows/Mac program that helps you organize large music collections. You listen to tracks one by one and decide what to do with them — keep, skip, or send to a specific folder. Everything is controlled via keyboard, with no extra mouse clicks.
 
 ---
 
-## 🎛️ Split Mode — привязка клавиш к папкам
+## 📦 Installation
 
-**Это главная фишка Sortify.** Ты можешь привязать любую клавишу к любой папке.
-
-### Как настроить:
-1. Нажми кнопку **Split** (она загорится синим)
-2. Нажми **Add Folder**
-3. Выбери папку на компьютере
-4. Нажми **любую клавишу**, которую хочешь привязать к этой папке
-   - Например: `1`, `2`, `F`, `G`, `Q`, `E` и т.д.
-   - **Нельзя** привязать клавиши, которые уже используются для управления плеером (стрелки, пробел, W, A, S, D)
-
-### Как использовать:
-- Когда играет трек, просто нажми привязанную клавишу
-- Трек сразу скопируется (или переместится) в нужную папку
-- Программа автоматически переключится на следующий трек
-
-### Что можно сделать с панелью Split Mode:
-- **Перетащить** — зажми заголовок с иконкой `⠇` и перетащи в любое место
-- **Свернуть** — нажми кнопку `−` в заголовке
-- **Удалить привязку** — наведи на папку и нажми корзину
-- **Очистить всё** — нажми "Clear All Bindings"
+1. Download the `.exe` installer file
+2. Run it and click "Next"
+3. After installation, open **Rhythm Sort** from your desktop
 
 ---
 
-## ⌨️ Горячие клавиши (можно переназначить в настройках)
+## 🚀 How to Get Started
 
-| Действие | Клавиша по умолчанию |
-|----------|---------------------|
-| **Accept** — отправить трек в Target Folder | `→` (стрелка вправо) |
-| **Reject/Skip** — пропустить трек | `←` (стрелка влево) |
-| **Play/Pause** | `Space` (пробел) |
-| **Предыдущий трек** | `W` |
-| **Следующий трек** | `S` |
-| **Громкость +** | `↑` (стрелка вверх) |
-| **Громкость -** | `↓` (стрелка вниз) |
-| **Перемотка назад** | `A` |
-| **Перемотка вперед** | `D` |
+### 1. Choose Your Music Folder
+Click the big **Source Folder** button — a file browser will open. Find your folder with tracks and click **Select This Folder**. The app will automatically find all music files inside, even if they're in subfolders.
+
+### 2. Choose Where to Save Liked Tracks
+Click **Target Folder** and select or create a folder where accepted tracks will be sent.
+
+### 3. Listen and Sort
+The first track will start playing automatically. From there, it's simple:
+
+| Action | Key |
+|---|---|
+| ✅ Accept track — copy to target folder | `→` (Right Arrow) |
+| ❌ Skip track | `←` (Left Arrow) |
+| ⏯ Pause / Resume | `Space` |
+| 🔊 Volume Up | `↑` (Up Arrow) |
+| 🔉 Volume Down | `↓` (Down Arrow) |
+| ⏩ Seek Forward | `D` |
+| ⏪ Seek Backward | `A` |
+| ⏭ Next Track | `S` |
+| ⏮ Previous Track | `W` |
+
+> All keys can be remapped in Settings.
+
+After each decision, the program automatically moves to the next track.
 
 ---
 
-## ⚙️ Настройки
+## 🖥️ Main Screen Overview
 
-Нажми на иконку шестерёнки ⚙️ в правом верхнем углу.
+### Top Toolbar
+
+**Source Folder** — where your music comes from.
+
+**Target Folder** — where accepted tracks are sent.
+
+**Split** — enables sorting into multiple folders at once.
+
+**C / M** — switches between two modes for accepting tracks:
+- **C** (Copy) — track is copied, original stays in place
+- **M** (Move) — track is moved, removed from source folder
+
+**⏭** — toggle automatic playback of the next track.
+
+**👁** — toggle the audio visualizer on/off.
+
+**Reset All** — completely reset everything and start over.
+
+**⚙️** — open Settings.
+
+### Track Queue (Right Panel)
+Shows all tracks with their statuses:
+
+| Icon | Meaning |
+|---|---|
+| 🎵 Pending | Not yet listened to |
+| 🎧 Played | Listened to, no decision made |
+| ✓ Accepted | Accepted and copied |
+| → Moved | Accepted and moved (file deleted from source) |
+| ✗ Skipped | Skipped |
+| ⚠️ Error | File is corrupted, skipped automatically |
+
+Click any track to jump to it. Moved and damaged tracks cannot be clicked.
+
+---
+
+## ⚙️ Settings — Detailed Description
+
+Open with the ⚙️ button in the top-right corner.
+
+---
+
+### General Tab
+
+**Dark Mode** — switch between dark and light themes.
+
+**Accept Mode — what happens when you press Accept:**
+- *Copy* — file is copied to the target folder. Original stays. Safe option.
+- *Move* — file is moved. Removed from source folder. Useful if you don't want duplicates.
+
+**Auto-play next track** — when a track ends, the next one starts automatically. If disabled, you need to press Play manually.
+
+**Auto-play after folder load** — music starts playing immediately after loading a folder. If disabled, you need to press Play manually.
+
+**Auto-apply cover — what to do with cover art when accepting a track:**
+- *Off* — do nothing automatically
+- *On Accept* — when accepting a track, its cover is automatically written to the file
+- *On Folder Load* — covers are applied to all tracks when loading the folder
+
+---
+
+### Audio Tab
+
+**Seek Step** — seek amount when pressing `A` and `D`. From 5 to 30 seconds. Set larger for long mixes.
+
+---
+
+### Visualizer Tab
+
+**Enable Visualizer** — show or hide audio animation.
+
+**Visualization Mode** — animation style:
+- *Dual Waveform* — two mirrored waveforms
+- *RMS Meter* — volume level indicator
+- *Aurora* — smooth light waves
+- *VU Meter* — classic studio meters
+- *Lissajous* — geometric figures from sound
+- *Wave (Low Profile)* — compact wave, takes little space
+
+**Sensitivity** — how actively the animation reacts to sound.
+
+**Performance Mode** — reduces FPS for older computers.
+
+---
+
+### Hotkeys Tab
+
+You can remap any control key. Click on the desired key — it highlights blue — press the new key. Done.
+
+Remappable actions: accept track, skip, play/pause, volume, seek, previous/next track.
+
+---
+
+## 🎛️ Split Mode — Sorting into Multiple Folders at Once
+
+Normal mode sends all accepted tracks to one folder. Split Mode is for when you want to sort tracks into different folders — by genre, mood, or artist.
+
+### How to Set Up
+
+1. Click the **Split** button in the top toolbar — a floating panel appears
+2. Click **Add Folder** and select your first folder
+3. The program will ask you to press a key — for example, press `1`
+4. Click **Add Folder** again → select a second folder → press `2`
+5. Add as many folders as you need
+
+Now while listening, press the corresponding number — the track will be sent to that folder.
+
+### Managing the Panel
+- **Drag** the panel by its title bar to reposition it
+- Click **−** to collapse the panel (Split Mode stays on)
+- Hover over a folder and click 🗑️ to remove it
+- **Clear All Bindings** — remove all folders and bindings at once
+
+> You cannot use keys already assigned to player controls — the app will warn you.
+
+---
+
+## 🖼️ Editing Cover Art
+
+You can set or replace cover art for any track. It will be written directly into the music file and will be visible in any player.
+
+1. Hover your mouse over the track title — small icons appear
+2. Click 🖼️
+3. Drag an image into the window or click to select a file (JPG, PNG up to 5 MB)
+4. Click **Save Cover**
+
+**Apply Cover to All** — A button in the right panel. Click it and the cover will be written to all tracks in the queue at once.
+
+---
+
+## ✏️ Renaming a Track
+
+1. Hover your mouse over the track title
+2. Click ✏️
+3. Enter the new name (the extension like .mp3 will be added automatically)
+4. **Enter** or ✓ — save, **Escape** or ✗ — cancel
+
+The program renames the actual file on disk.
+
+---
+
+## 📁 Built-in File Browser
+
+When you choose a folder, the program's own file browser opens. It can do the following:
+
+| Button | Action |
+|---|---|
+| ⬆ Up | Go to parent folder |
+| 🖥️ Desktop | Jump to Desktop |
+| 📁 New Folder | Create a new folder right here |
+
+- **Single click** — select a folder
+- **Double click** — enter the folder
+- **Right click** — rename or delete the folder
+
+The statistics line shows how many audio files are in the current folder.
+
+---
+
+## 🔴 Corrupted Files
+
+If a file cannot be played, the program will automatically mark it ⚠️ and move to the next track. Other tracks are not affected.
+
+---
+
+## 💾 Resuming Later
+
+You can close the program at any time — progress is saved. When you reopen the same folder, already processed tracks will not load again; only the remaining ones will appear in the queue.
+
+This allows you to sort large collections over multiple sessions.
+
+> If you want to start over, press **Reset All**. Settings and hotkeys will not be reset.
+
+---
+
+## 💡 Tips
+
+**Not sure about a decision?** Press `S` — the track will get a "Played" status and you can return to it later by clicking it in the right panel.
+
+**Large collection?** Use `A` / `D` seek to quickly preview tracks without listening fully. In Settings, you can set the seek step to 5, 10, 15, 20, 25, or 30 seconds.
+
+**Sorting by genre?** Turn on Split Mode and bind folders to keys. Much faster than changing the target folder manually every time.
+
+**Worried about your files?** Use **C (Copy)** mode — originals stay in place and nothing is lost if something goes wrong.
+
+---
+
+## 🛠️ System Requirements
+
+- **OS:** Windows 10 or Windows 11 / macOS (Universal)
+- **RAM:** 256 MB or more
+- **Disk space:** Approximately 150 MB
+
+---
+
+## 🎵 Supported Formats
+
+MP3, WAV, FLAC, AAC, OGG, M4A, OPUS, WMA, AIFF, APE, ALAC, WV, TTA, and other audio formats. Video files with audio: MP4, MKV, MOV, WEBM.
+
+---
+
+## 📞 Support
+
+For questions and suggestions:
+
+| Platform | Contact |
+|---|---|
+| **Instagram** | [@dj.dlm](https://instagram.com/dj.dlm) |
+| **Telegram** | [@DJ_DLM_DJ](https://t.me/DJ_DLM_DJ) |
+
+---
+
+**Sortify — your personal music sorting assistant!** 🎧
+
+# Russian
+
+# 🎵 Rhythm Sort — Твой личный сортировщик музыки
+
+Rhythm Sort — это программа для Windows/Mac, которая помогает разобрать большую музыкальную коллекцию. Ты слушаешь треки по одному и решаешь что с ними делать — оставить, пропустить или отправить в нужную папку. Всё управляется с клавиатуры, без лишних кликов мышью.
+
+---
+
+## 📦 Установка
+
+1. Скачай файл установщика `.exe`
+2. Запусти его и нажимай «Далее»
+3. После установки открой **Rhythm Sort** с рабочего стола
+
+---
+
+## 🚀 Как начать работу
+
+### 1. Выбери папку с музыкой
+Нажми большую кнопку **Source Folder** — откроется проводник. Найди папку с треками и нажми **Select This Folder**. Программа сама найдёт все музыкальные файлы внутри, даже если они разложены по подпапкам.
+
+### 2. Выбери куда сохранять понравившиеся треки
+Нажми **Target Folder** и выбери или создай папку куда будут отправляться треки которые ты одобришь.
+
+### 3. Слушай и сортируй
+Первый трек начнёт играть автоматически. Дальше всё просто:
+
+| Что сделать | Клавиша |
+|---|---|
+| ✅ Принять трек — скопировать в папку назначения | `→` (стрелка вправо) |
+| ❌ Пропустить трек | `←` (стрелка влево) |
+| ⏯ Пауза / Продолжить | `Пробел` |
+| 🔊 Громче | `↑` (стрелка вверх) |
+| 🔉 Тише | `↓` (стрелка вниз) |
+| ⏩ Перемотать вперёд | `D` |
+| ⏪ Перемотать назад | `A` |
+| ⏭ Следующий трек | `S` |
+| ⏮ Предыдущий трек | `W` |
+
+Клавиши можно переназначать
+После каждого решения программа автоматически переходит к следующему треку.
+
+---
+
+## 🖥️ Что находится на главном экране
+
+### Верхняя панель
+
+**Source Folder** — папка откуда берётся музыка.
+
+**Target Folder** — папка куда отправляются принятые треки.
+
+**Split** — кнопка включения режима сортировки по нескольким папкам сразу. 
+
+**C / M** — переключатель режима принятия треков:
+- **C** (Copy) — трек копируется, оригинал остаётся на месте
+- **M** (Move) — трек перемещается, из исходной папки удаляется
+
+**⏭** — включить или выключить автоматический переход к следующему треку.
+
+**👁** — включить или выключить визуализатор (анимация звука).
+
+**Reset All** — полностью сбросить всё и начать заново.
+
+**⚙️** — открыть настройки.
+
+### Очередь треков (правая панель)
+Показывает все треки с их статусами:
+
+| Значок | Что означает |
+|---|---|
+| 🎵 Pending | Ещё не прослушан |
+| 🎧 Played | Прослушан, решение не принято |
+| ✓ Accepted | Принят и скопирован |
+| → Moved | Принят и перемещён (файл удалён из исходной папки) |
+| ✗ Skipped | Пропущен |
+| ⚠️ Error | Файл повреждён, программа пропустила его автоматически |
+
+Кликни на любой трек чтобы перейти к нему. Перемещённые и повреждённые треки недоступны для перехода.
+
+---
+
+## ⚙️ Настройки — подробное описание
+
+Открываются кнопкой ⚙️ в правом верхнем углу.
+
+---
 
 ### Вкладка General (Основные)
-- **Dark Mode** — тёмная/светлая тема
-- **Accept Mode** — `Copy` (копировать) или `Move` (перемещать) треки
-- **Reject Mode** — `Skip Only` (просто пропустить) или `Move to Folder` (переместить в папку)
-- **Auto-play next track** — автоматически играть следующий трек после окончания текущего
-- **Auto-apply cover** — автоматически применять обложку при Accept
 
-### Вкладка Audio (Аудио)
-- **Seek Step** — сколько секунд перематывать кнопками `A` и `D`
+**Dark Mode** — переключить тёмную и светлую тему оформления.
 
-### Вкладка Visualizer (Визуализация)
-- **Enable Visualizer** — вкл/выкл визуализатор
-- **Visualization Mode** — выбери один из 6 режимов:
-  - `Dual Waveform` — как в Serato (синяя и оранжевая волны)
-  - `RMS Meter` — уровень громкости
-  - `Aurora` — северное сияние
-  - `VU Meter` — лампочки как на магнитофоне
-  - `Lissajous` — фигуры Лиссажу (осциллограф)
-  - `Wave` — плавная волна
-- **Sensitivity** — чувствительность визуализации
-- **Performance Mode** — уменьшает FPS для старых компьютеров
+**Accept Mode — что происходит с файлом когда нажимаешь «Принять»:**
+- *Copy* — файл копируется в папку назначения. Оригинал остаётся на месте. Безопасный вариант.
+- *Move* — файл перемещается. Из исходной папки удаляется. Удобно если не хочешь дублей.
+
+**Auto-play next track** — когда трек заканчивается, следующий начинает играть автоматически. Если выключить — нужно нажать Play вручную.
+
+**Auto-play after folder load** — музыка начинает играть сразу после загрузки папки. Если выключить — нужно нажать Play самому.
+
+**Auto-apply cover — что делать с обложкой при принятии трека:**
+- *Off* — ничего не делать автоматически.
+- *On Accept* — при принятии трека его обложка автоматически записывается в файл.
+- *On Folder Load* — обложки применяются ко всем трекам при загрузке папки.
+
+---
+
+### Вкладка Audio (Звук)
+
+**Seek Step** — шаг перемотки при нажатии `A` и `D`. От 5 до 30 секунд. Поставь побольше если слушаешь длинные миксы.
+
+---
+
+### Вкладка Visualizer (Визуализатор)
+
+**Enable Visualizer** — показывать или скрыть анимацию звука.
+
+**Visualization Mode** — стиль анимации:
+- *Dual Waveform* — две зеркальные волны
+- *RMS Meter* — индикатор уровня громкости
+- *Aurora* — плавные световые волны
+- *VU Meter* — классические студийные стрелки
+- *Lissajous* — геометрические фигуры от звука
+- *Wave (Low Profile)* — компактная волна, занимает мало места
+
+**Sensitivity** — насколько активно реагирует анимация на звук.
+
+---
 
 ### Вкладка Hotkeys (Горячие клавиши)
-- Нажми на любую клавишу в списке, затем нажми новую клавишу на клавиатуре — привязка изменится
+
+Можно переназначить любую клавишу управления. Кликни на нужную кнопку — она подсветится синим — нажми новую клавишу. Готово.
+
+Переназначаются: принятие трека, пропуск, пауза, громкость, перемотка, переключение треков вперёд и назад.
 
 ---
 
-## 📁 Другие возможности
+## 🎛️ Split Mode — сортировка сразу по нескольким папкам
 
-### Очередь (Queue)
-- Справа виден список всех треков
-- Иконки показывают статус: `✓` — принят, `✗` — пропущен, `🎧` — отыгран
-- Нажми на любой трек в очереди — он начнет играть
-- Кнопка **"Apply Cover to All"** — применить обложку текущего трека ко всем остальным
+Обычный режим отправляет все принятые треки в одну папку, а Split Mode нужен когда хочешь раскладывать треки по разным папкам — например по жанрам, настроению или исполнителям.
 
-### Сломанные файлы
-- Если трек не играет, он автоматически попадает в список "Broken Files" в левом нижнем углу
-- Нажми **Copy All** — скопировать список
-- Нажми **Save** — сохранить список в файл
-- Нажми **Clear** — очистить список
+### Как настроить
 
-### Сброс всего
-- Кнопка **Reset All** очищает очередь, папки и всю историю
+1. Нажми кнопку **Split** в верхней панели — появится плавающая панель
+2. Нажми **Add Folder** и выбери первую папку
+3. Программа попросит нажать клавишу — нажми например `1`
+4. Нажми **Add Folder** снова → выбери вторую папку → нажми `2`
+5. Добавь столько папок сколько нужно
 
----
+Теперь во время прослушивания нажимай нужную цифру — трек сразу отправится в соответствующую папку.
 
-## ❓ Частые вопросы
+### Управление панелью
+- Панель можно **перетаскивать** по экрану за заголовок
+- Кнопка **−** сворачивает панель (Split Mode при этом остаётся включённым)
+- При наведении на папку появляется 🗑️ — удалить эту папку
+- **Clear All Bindings** — удалить все папки и привязки сразу
 
-### Почему не играет звук?
-- Проверь что системный звук включен
-- Попробуй перезагрузить программу
-
-### Почему визуализация дергается?
-- Уменьши Sensitivity в настройках
-- Включи Performance Mode
-
-### Как удалить привязку папки в Split Mode?
-- Наведи на папку в панели Split Mode — появится корзина, нажми на неё
-
-### Можно ли привязать одну клавишу к нескольким папкам?
-- Нет. Каждая клавиша может быть привязана только к одной папке. Если попробуешь привязать занятую клавишу — программа спросит, хочешь ли ты её перезаписать.
+> Нельзя использовать клавиши которые уже заняты управлением плеером — программа предупредит.
 
 ---
 
-## 📦 Системные требования
+## 🖼️ Редактирование обложки
 
-- **Windows 10 или 11**
-- **4 ГБ оперативной памяти**
-- **50 МБ свободного места**
+Можно установить или заменить картинку-обложку для любого трека. Она запишется прямо в музыкальный файл и будет видна в любом плеере.
+
+1. Наведи мышь на название трека — появятся маленькие иконки
+2. Нажми 🖼️
+3. Перетащи картинку в окно или кликни чтобы выбрать файл (JPG, PNG до 5 МБ)
+4. Нажми **Save Cover**
+
+**Apply Cover to All** — Кнопка в правой панели. Нажми и она запишется во все треки очереди сразу.
+
+---
+
+## ✏️ Переименование трека
+
+1. Наведи мышь на название трека
+2. Нажми ✏️
+3. Введи новое название (расширение .mp3 и т.д. добавится само)
+4. **Enter** или ✓ — сохранить, **Escape** или ✗ — отменить
+
+Программа переименует сам файл на диске.
+
+---
+
+## 📁 Встроенный проводник
+
+Когда выбираешь папку — открывается собственный проводник программы. Он умеет следующее:
+
+| Кнопка | Что делает |
+|---|---|
+| ⬆ Up | Перейти на папку выше |
+| 🖥️ Desktop | Перейти на рабочий стол |
+| 📁 New Folder | Создать новую папку прямо здесь |
+| 🔄 Refresh | Обновить список если добавил папку снаружи |
+
+- **Один клик** — выбрать папку
+- **Двойной клик** — войти внутрь
+- **Правый клик** — переименовать или удалить папку. Примечание - При удалении файл стирается с компютера полностью без перемещения в корзину
+
+В строке статистики показывается сколько аудиофайлов находится в текущей папке.
+
+---
+
+## 🔴 Повреждённые файлы
+
+Если файл невозможно воспроизвести — программа автоматически пометит его ⚠️ и перейдёт к следующему автоматически откидывая его в список "Broken Files". Остальные треки при этом не пострадают.
+
+---
+
+## 💾 Продолжение после перерыва
+
+Можно закрыть программу в любой момент — прогресс сохранится. При следующем открытии той же папки уже обработанные треки не загрузятся повторно, в очереди появятся только оставшиеся.
+
+Это позволяет сортировать большие коллекции в несколько сессий.
+
+> Хочешь начать заново — нажми **Reset All**. Настройки и горячие клавиши при этом не сбросятся.
+
+---
+
+## 💡 Советы
+
+**Не уверен в решении?** Нажми `S` — трек получит статус «Played» и к нему можно вернуться позже кликнув в правой панели.
+
+**Большая коллекция?** Используй перемотку `A` / `D` чтобы быстро оценивать треки не слушая целиком. В настройках поставь шаг перемотки 5, 10, 15, 20, 25, 30 секунд.
+
+**Сортируешь по жанрам?** Включи Split Mode и привяжи папки к клавишам. Намного быстрее чем менять папку назначения вручную каждый раз.
+
+**Боишься за файлы?** Используй режим **C (Copy)** — оригиналы останутся на месте и ничего не потеряется если что-то пойдёт не так.
+
+---
+
+## 🛠️ Системные требования
+
+- **ОС:** Windows 10 или Windows 11/MacOS(Universal)
+- **Оперативная память:** от 256 МБ
+- **Место на диске:** около 150 МБ
+
+---
+
+## 🎵 Поддерживаемые форматы
+
+MP3, WAV, FLAC, AAC, OGG, M4A, OPUS, WMA, AIFF, APE, ALAC, WV, TTA и другие аудиоформаты. Видео с музыкой: MP4, MKV, MOV, WEBM.
 
 ---
 
 ## 📞 Поддержка
-
-По вопросам и предложениям instagram: dj.dlm
+| Платформа | Контакт |
+|---|---|
+| **Instagram** | [@dj.dlm](https://instagram.com/dj.dlm) |
+| **Telegram** | [@DJ_DLM_DJ](https://t.me/DJ_DLM_DJ) |
 
 ---
 

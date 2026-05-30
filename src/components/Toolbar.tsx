@@ -17,7 +17,6 @@ let idCounter = 0;
 const nextId = () => `t_${Date.now()}_${idCounter++}`;
 const isBrowser = typeof window !== 'undefined';
 
-// Все возможные расширения аудио файлов
 const AUDIO_EXTS = new Set([
   "mp3", "wav", "flac", "aac", "ogg", "m4a", "m4b", "m4r", "m4p",
   "mp4", "mpeg", "mpga", "mp2", "mpa", "opus", "wma", "wmv",
@@ -27,13 +26,11 @@ const AUDIO_EXTS = new Set([
 ]);
 
 const SKIP_FILES = new Set([
-  'Thumbs.db', 'desktop.ini',
-  '.localized', 'Icon\r'
+  'Thumbs.db', 'desktop.ini', '.localized', 'Icon\r'
 ]);
 
 function isSystemFile(filename: string): boolean {
-  if (SKIP_FILES.has(filename)) return true;
-  return false;
+  return SKIP_FILES.has(filename);
 }
 
 function isSameFolder(folder1: string | null, folder2: string | null): boolean {
@@ -59,6 +56,7 @@ export function Toolbar({ onOpenSettings }: { onOpenSettings: () => void }) {
   const autoPlayAfterLoad = useSettings((s) => s.autoPlayAfterLoad);
   const autoPlayNext = useSettings((s) => s.autoPlayNext);
   const vizEnabled = useSettings((s) => s.vizEnabled);
+  const acceptMode = useSettings((s) => s.acceptMode);
   const set = useSettings((s) => s.set);
   const clearFolders = useSettings((s) => s.clearFolders);
   const clearProcessed = usePlayer((s) => s.clearProcessed);
@@ -72,51 +70,38 @@ export function Toolbar({ onOpenSettings }: { onOpenSettings: () => void }) {
 
   const pickSourceFolder = useCallback(async () => {
     if (scanning) return;
-
     setScanning(true);
     try {
       const api = isBrowser ? window.electronAPI : null;
       if (api) {
         const folder = await api.selectFolderWithPreview();
         if (!folder) return;
-
         if (isSameFolder(folder, targetFolder)) {
           toast.error("Source folder cannot be the same as Target folder!");
           setScanning(false);
           return;
         }
-
         clearProcessed();
         clearBrokenTracks();
         idCounter = 0;
-
         const files = await api.scanFolder(folder);
-        
         const audioFiles = files.filter(f => !isSystemFile(f.name));
-
         const tracks: Track[] = audioFiles.map((f) => ({
           ...f,
           id: nextId(),
           status: "pending"
         }));
-
         setScanTotal(tracks.length);
         setScanProgress(100);
         setShowProgress(true);
-        
-        setTimeout(() => {
-          setShowProgress(false);
-        }, 500);
-
+        setTimeout(() => setShowProgress(false), 500);
         if (tracks.length === 0) {
           toast.error("No files found in this folder");
           setScanning(false);
           return;
         }
-
         setTracks(tracks, folder);
         toast.success(`Loaded ${tracks.length} tracks`);
-
         if (autoPlayAfterLoad && tracks.length > 0) {
           setTimeout(() => {
             const { tracks: stateTracks, setIndex, setIsPlaying } = usePlayer.getState();
@@ -162,11 +147,7 @@ export function Toolbar({ onOpenSettings }: { onOpenSettings: () => void }) {
   const handleToggleSplitMode = () => {
     const newMode = !isSplitMode;
     setSplitMode(newMode);
-    if (newMode) {
-      toast.info("Split Mode ON - Add folders and bind keys", { duration: 3000 });
-    } else {
-      toast.info("Split Mode OFF");
-    }
+    toast.info(newMode ? "Split Mode ON - Add folders and bind keys" : "Split Mode OFF", { duration: 3000 });
   };
 
   const handleToggleVisualizer = () => {
@@ -177,6 +158,13 @@ export function Toolbar({ onOpenSettings }: { onOpenSettings: () => void }) {
   const handleToggleAutoPlay = () => {
     set("autoPlayNext", !autoPlayNext);
     toast.info(autoPlayNext ? "Auto-play OFF" : "Auto-play ON");
+  };
+
+  // ✅ Переключалка Copy/Move
+  const handleToggleAcceptMode = () => {
+    const newMode = acceptMode === "copy" ? "move" : "copy";
+    set("acceptMode", newMode);
+    toast.info(newMode === "move" ? "Accept Mode: Move (file will be deleted from source)" : "Accept Mode: Copy (file stays in source)");
   };
 
   const handleFullReset = useCallback(() => {
@@ -190,7 +178,6 @@ export function Toolbar({ onOpenSettings }: { onOpenSettings: () => void }) {
     setScanProgress(0);
     setScanTotal(0);
     setShowProgress(false);
-
     toast.success("Everything reset! Source and Target folders cleared, queue emptied.");
   }, [resetPlayer, clearFolders, clearProcessed, clearBrokenTracks]);
 
@@ -203,8 +190,7 @@ export function Toolbar({ onOpenSettings }: { onOpenSettings: () => void }) {
               <span className="text-primary text-sm font-bold">♪</span>
             </div>
             <span className="font-semibold tracking-tight">Rhythm Sort</span>
-            
-            {/* Split Mode Button */}
+
             <Button
               size="sm"
               variant={isSplitMode ? "default" : "secondary"}
@@ -229,8 +215,20 @@ export function Toolbar({ onOpenSettings }: { onOpenSettings: () => void }) {
               <Trash2 className="w-4 h-4" />
               Reset All
             </Button>
-            
-            {/* Auto-play Toggle Button - стрелка вправо */}
+
+            {/* ✅ Accept Mode Toggle: C = Copy, M = Move */}
+            <Button
+              size="sm"
+              variant={acceptMode === "move" ? "default" : "secondary"}
+              onClick={handleToggleAcceptMode}
+              title={acceptMode === "move" ? "Accept Mode: Move (click to switch to Copy)" : "Accept Mode: Copy (click to switch to Move)"}
+              className="font-mono font-bold w-8 h-8 p-0"
+              disabled={scanning}
+            >
+              {acceptMode === "move" ? "M" : "C"}
+            </Button>
+
+            {/* Auto-play Toggle */}
             <Button
               size="sm"
               variant={autoPlayNext ? "default" : "secondary"}
@@ -240,8 +238,8 @@ export function Toolbar({ onOpenSettings }: { onOpenSettings: () => void }) {
             >
               <SkipForward className="w-4 h-4" />
             </Button>
-            
-            {/* Visualizer Toggle Button */}
+
+            {/* Visualizer Toggle */}
             <Button
               size="sm"
               variant={vizEnabled ? "default" : "secondary"}
@@ -251,7 +249,7 @@ export function Toolbar({ onOpenSettings }: { onOpenSettings: () => void }) {
             >
               {vizEnabled ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
             </Button>
-            
+
             {isBrowser && !window.electronAPI && (
               <span className="text-xs text-muted-foreground hidden sm:inline">
                 Browser preview · file ops require desktop app
@@ -270,10 +268,7 @@ export function Toolbar({ onOpenSettings }: { onOpenSettings: () => void }) {
               <span>{scanTotal} files loaded</span>
             </div>
             <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
-              <div
-                className="bg-primary h-2 rounded-full transition-all duration-300"
-                style={{ width: `100%` }}
-              />
+              <div className="bg-primary h-2 rounded-full transition-all duration-300" style={{ width: `100%` }} />
             </div>
           </div>
         )}
@@ -305,9 +300,7 @@ export function Toolbar({ onOpenSettings }: { onOpenSettings: () => void }) {
                 </span>
               </div>
               {sourceFolder && (
-                <div className="mt-2 text-[10px] text-primary/70">
-                  📁 Ready to import
-                </div>
+                <div className="mt-2 text-[10px] text-primary/70">📁 Ready to import</div>
               )}
             </div>
           </div>
@@ -337,9 +330,7 @@ export function Toolbar({ onOpenSettings }: { onOpenSettings: () => void }) {
                 </span>
               </div>
               {targetFolder && (
-                <div className="mt-2 text-[10px] text-green-500/70">
-                  ✓ Ready to accept tracks
-                </div>
+                <div className="mt-2 text-[10px] text-green-500/70">✓ Ready to accept tracks</div>
               )}
             </div>
           </div>

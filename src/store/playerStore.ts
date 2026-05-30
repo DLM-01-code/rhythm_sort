@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import type { AudioFileEntry } from "@/types/electron";
 
-export type TrackStatus = "pending" | "accepted" | "rejected" | "error" | "played";
+export type TrackStatus = "pending" | "accepted" | "rejected" | "error" | "played" | "moved";
 
 export interface Track extends AudioFileEntry {
   id: string;
@@ -105,8 +105,11 @@ export const usePlayer = create<PlayerState>()((set, get) => ({
           s.processedPaths.push(track.path);
         }
       }
+
+      const newTracks = s.tracks.map((t) => (t.id === id ? { ...t, status } : t));
+
       return {
-        tracks: s.tracks.map((t) => (t.id === id ? { ...t, status } : t)),
+        tracks: newTracks,
         processedPaths: s.processedPaths
       };
     }),
@@ -158,7 +161,7 @@ export const usePlayer = create<PlayerState>()((set, get) => ({
     }
 
     let nextIndex = currentIndex + 1;
-    while (nextIndex < tracks.length && tracks[nextIndex].status === "error") {
+    while (nextIndex < tracks.length && (tracks[nextIndex].status === "error" || tracks[nextIndex].status === "moved")) {
       nextIndex++;
     }
     if (nextIndex < tracks.length) {
@@ -177,7 +180,7 @@ export const usePlayer = create<PlayerState>()((set, get) => ({
     }
 
     let prevIndex = currentIndex - 1;
-    while (prevIndex >= 0 && tracks[prevIndex].status === "error") {
+    while (prevIndex >= 0 && (tracks[prevIndex].status === "error" || tracks[prevIndex].status === "moved")) {
       prevIndex--;
     }
     if (prevIndex >= 0) {
@@ -186,12 +189,18 @@ export const usePlayer = create<PlayerState>()((set, get) => ({
     }
   },
 
-  // ✅ FIX 3: setIndex теперь пропускает треки со статусом "error"
+  // ✅ FIX: setIndex блокирует "error" и "moved" (файл удалён с диска)
+  // "accepted" (Copy режим) — разрешаем, файл остался на месте
   setIndex: (i) => {
     const { tracks } = get();
     if (i >= 0 && i < tracks.length) {
-      if (tracks[i].status === "error") {
+      const status = tracks[i].status;
+      if (status === "error") {
         console.log(`⛔ Skipping broken track at index ${i}`);
+        return;
+      }
+      if (status === "moved") {
+        console.log(`⛔ Skipping moved track at index ${i} — file no longer exists`);
         return;
       }
       console.log(`🎯 Selected track at index ${i}`);
@@ -202,7 +211,7 @@ export const usePlayer = create<PlayerState>()((set, get) => ({
   skipToNextValid: () => {
     const { tracks, currentIndex } = get();
     let nextIndex = currentIndex + 1;
-    while (nextIndex < tracks.length && tracks[nextIndex].status === "error") {
+    while (nextIndex < tracks.length && (tracks[nextIndex].status === "error" || tracks[nextIndex].status === "moved")) {
       nextIndex++;
     }
     if (nextIndex < tracks.length) {
