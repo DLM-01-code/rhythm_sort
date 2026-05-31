@@ -123,6 +123,14 @@ Open with the ⚙️ button in the top-right corner.
 - *VU Meter* — classic studio meters
 - *Lissajous* — geometric figures from sound
 - *Wave (Low Profile)* — compact wave, takes little space
+- *Particle Flow* - Particles fly upward with tails, reacting to every frequency
+- *DNA Helix* - Rotating double helix, bridges pulsate under the bass
+- *Ink Drop* - Organic spots that blur and breathe
+- *City Lights* - Thin neon columns with reflections and glowing tops
+- *Neon Ring* - Three concentric rings + particles around the circumference
+- *Mirror Bars* - Mirrored equalizer with a gradient from blue to purple
+- *Plasma* - Five colored blob spots blended via screen blend mode
+- *Oscilloscope* - A green line on a dark grid, like an old oscilloscope
 
 **Sensitivity** — how actively the animation reacts to sound.
 
@@ -387,6 +395,14 @@ Rhythm Sort — это программа для Windows/Mac, которая п�
 - *VU Meter* — классические студийные стрелки
 - *Lissajous* — геометрические фигуры от звука
 - *Wave (Low Profile)* — компактная волна, занимает мало места
+- *Particle Flow* - Частицы летят вверх с хвостами, реагируют на каждую частоту
+- *DNA Helix* - Вращающаяся двойная спираль, перемычки пульсируют под бас
+- *Ink Drop* - Органические пятна которые расплываются и дышат
+- *City Lights* - Тонкие неоновые столбики с отражением и свечением верхушек
+- *Neon Ring* - Три концентрических кольца + частицы по окружности
+- *Mirror Bars* - Зеркальный эквалайзер с градиентом от синего к фиолетовому
+- *Plasma* - Пять цветных blob-пятен смешиваются через screen blend mode
+- *Oscilloscope* - Зелёная линия на тёмной сетке как на старом осциллографе
 
 **Sensitivity** — насколько активно реагирует анимация на звук.
 
