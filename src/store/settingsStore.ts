@@ -10,7 +10,15 @@ export type VizMode =
   | "aurora" 
   | "vu_meter" 
   | "lissajous" 
-  | "wave";
+  | "wave"
+  | "particle_flow"
+  | "dna_helix"
+  | "ink_drop"
+  | "city_lights"
+  | "neon_ring"
+  | "mirror_bars"
+  | "plasma"
+  | "oscilloscope";
 export type CoverApplyMode = "off" | "onAccept" | "onFolderLoad";
 
 interface SettingsState {
