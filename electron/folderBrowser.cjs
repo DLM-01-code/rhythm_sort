@@ -9,7 +9,6 @@ const execPromise = util.promisify(exec);
 let browserWindow = null;
 let resolvePromise = null;
 let handlersRegistered = false;
-// Активные fs.watch наблюдатели: dirPath -> FSWatcher
 const dirWatchers = new Map();
 
 // Глобальный кэш всех когда-либо просмотренных папок
@@ -75,6 +74,7 @@ async function getDrives() {
   return drives;
 }
 
+// Быстрое сканирование папки (синхронное для скорости)
 async function scanDirectoryFast(dirPath) {
   if (globalCache.has(dirPath)) {
     console.log('⚡ INSTANT from cache:', dirPath);
@@ -278,10 +278,9 @@ async function createFolder(parentPath, folderName) {
   const newPath = path.join(parentPath, folderName);
   try {
     await fs.mkdir(newPath, { recursive: true });
-    // ✅ FIX 2: инвалидируем кэш и делаем свежее сканирование с диска
     globalCache.delete(parentPath);
-    const freshItems = await scanDirectoryFast(parentPath);
-    return { success: true, path: newPath, items: freshItems };
+    await scanDirectoryFast(parentPath);
+    return { success: true, path: newPath };
   } catch (error) {
     return { success: false, error: error.message };
   }
@@ -294,8 +293,8 @@ async function renameFolder(oldPath, newName) {
     await fs.rename(oldPath, newPath);
     globalCache.delete(dir);
     globalCache.delete(oldPath);
-    const freshItems = await scanDirectoryFast(dir);
-    return { success: true, newPath, items: freshItems };
+    await scanDirectoryFast(dir);
+    return { success: true, newPath };
   } catch (error) {
     return { success: false, error: error.message };
   }
@@ -307,10 +306,26 @@ async function deleteFolder(folderPath) {
     const parentPath = path.dirname(folderPath);
     globalCache.delete(parentPath);
     globalCache.delete(folderPath);
+    await scanDirectoryFast(parentPath);
+    return { success: true };
+  } catch (error) {
+    console.error('Error deleting folder:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+async function trashFolder(folderPath) {
+  try {
+    const escapedPath = folderPath.replace(/'/g, "''");
+    const psScript = `Add-Type -AssemblyName Microsoft.VisualBasic; [Microsoft.VisualBasic.FileIO.FileSystem]::DeleteDirectory('${escapedPath}', 'OnlyErrorDialogs', 'SendToRecycleBin')`;
+    await execPromise(`powershell -NoProfile -Command "${psScript}"`, { timeout: 8000 });
+    const parentPath = path.dirname(folderPath);
+    globalCache.delete(parentPath);
+    globalCache.delete(folderPath);
     const freshItems = await scanDirectoryFast(parentPath);
     return { success: true, items: freshItems };
   } catch (error) {
-    console.error('Error deleting folder:', error);
+    console.error('Error trashing folder:', error);
     return { success: false, error: error.message };
   }
 }
@@ -327,7 +342,6 @@ function registerHandlers() {
     return { success: true, items };
   });
 
-  // Принудительное обновление — сбрасывает кэш и сканирует заново с диска
   ipcMain.handle('folder-browser:scan-fresh', async (event, dirPath) => {
     globalCache.delete(dirPath);
     const items = await scanDirectoryFast(dirPath);
@@ -344,6 +358,10 @@ function registerHandlers() {
   
   ipcMain.handle('folder-browser:delete-folder', async (event, folderPath) => {
     return await deleteFolder(folderPath);
+  });
+
+  ipcMain.handle('folder-browser:trash-folder', async (event, folderPath) => {
+    return await trashFolder(folderPath);
   });
   
   ipcMain.on('folder-browser:select', (event, folderPath) => {
@@ -362,9 +380,7 @@ function registerHandlers() {
     if (browserWindow) browserWindow.close();
   });
   
-  // Подписка на изменения папки — шлём событие в окно браузера
   ipcMain.handle('folder-browser:watch', async (event, dirPath) => {
-    // Закрываем предыдущий watcher если есть
     if (dirWatchers.has(dirPath)) {
       try { dirWatchers.get(dirPath).close(); } catch(e) {}
     }
@@ -372,7 +388,6 @@ function registerHandlers() {
       const fsSync = require('fs');
       let debounceTimer = null;
       const watcher = fsSync.watch(dirPath, { persistent: false }, (eventType, filename) => {
-        // Дебаунс 300мс чтобы не спамить при массовом создании
         clearTimeout(debounceTimer);
         debounceTimer = setTimeout(async () => {
           globalCache.delete(dirPath);
@@ -429,9 +444,6 @@ function createFolderBrowser() {
     title: 'Select Music Folder'
   });
 
-  // ✅ FIX 2: createNewFolder, renameFolder, deleteFolder теперь используют
-  // свежий список items из ответа сервера и вызывают renderItems() заново,
-  // вместо того чтобы вручную добавлять/удалять DOM-элементы
   const html = `<!DOCTYPE html>
 <html>
 <head>
@@ -563,8 +575,10 @@ function createFolderBrowser() {
     .action-btn:hover { background: #585b70; }
     .modal {
       position: fixed;
-      top: 0; left: 0;
-      width: 100%; height: 100%;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
       background: rgba(0,0,0,0.7);
       display: flex;
       justify-content: center;
@@ -592,7 +606,9 @@ function createFolderBrowser() {
       gap: 10px;
       justify-content: flex-end;
     }
-    .modal-buttons button { padding: 6px 12px; }
+    .modal-buttons button {
+      padding: 6px 12px;
+    }
     .context-menu {
       position: fixed;
       background: #313244;
@@ -608,7 +624,10 @@ function createFolderBrowser() {
       cursor: pointer;
       transition: all 0.1s;
     }
-    .context-menu-item:hover { background: #89b4fa; color: #1e1e2e; }
+    .context-menu-item:hover {
+      background: #89b4fa;
+      color: #1e1e2e;
+    }
   </style>
 </head>
 <body>
@@ -621,6 +640,7 @@ function createFolderBrowser() {
     <div class="action-btn" id="desktopBtn">🖥️ Desktop</div>
     <div class="action-btn" id="newFolderBtn">📁 New Folder</div>
     <div class="action-btn" id="refreshBtn">🔄 Refresh</div>
+    <div class="action-btn" id="trashModeBtn">♻️ Trash</div>
   </div>
   <div class="path-bar" id="currentPath">/</div>
   <div class="stats" id="stats">📁 Loading...</div>
@@ -652,16 +672,24 @@ function createFolderBrowser() {
         </div>
       \`;
       document.body.appendChild(modal);
+      
       const input = modal.querySelector('#modalInput');
       setTimeout(() => input?.select(), 100);
+      
       modal.querySelector('#modalOk').onclick = () => {
         const value = input.value.trim();
         if (value) callback(value);
         modal.remove();
       };
+      
       modal.querySelector('#modalCancel').onclick = () => modal.remove();
+      
       input.onkeydown = (e) => {
-        if (e.key === 'Enter') { const value = input.value.trim(); if (value) callback(value); modal.remove(); }
+        if (e.key === 'Enter') {
+          const value = input.value.trim();
+          if (value) callback(value);
+          modal.remove();
+        }
         if (e.key === 'Escape') modal.remove();
       };
     }
@@ -679,14 +707,23 @@ function createFolderBrowser() {
         </div>
       \`;
       document.body.appendChild(modal);
-      modal.querySelector('#modalOk').onclick = () => { callback(true); modal.remove(); };
-      modal.querySelector('#modalCancel').onclick = () => { callback(false); modal.remove(); };
+      
+      modal.querySelector('#modalOk').onclick = () => {
+        callback(true);
+        modal.remove();
+      };
+      
+      modal.querySelector('#modalCancel').onclick = () => {
+        callback(false);
+        modal.remove();
+      };
     }
     
     function getUniqueFolderName(baseName) {
       let counter = 1;
       let newName = baseName;
       const existingNames = items.filter(i => i.isDirectory).map(i => i.name);
+      
       while (existingNames.includes(newName)) {
         counter++;
         newName = \`\${baseName} (\${counter})\`;
@@ -716,6 +753,7 @@ function createFolderBrowser() {
       const div = document.createElement('div');
       div.className = 'item';
       if (selectedPath === folder.path) div.classList.add('selected');
+      
       const icon = folder.isShortcut ? '🔗' : '📁';
       const info = folder.isShortcut ? 'Shortcut' : 'Folder';
       div.innerHTML = \`
@@ -723,16 +761,28 @@ function createFolderBrowser() {
         <div class="name">\${escapeHtml(folder.name)}</div>
         <div class="info">\${info}</div>
       \`;
+      
       div.setAttribute('data-path', folder.path);
-      div.onclick = (e) => { e.stopPropagation(); selectedPath = folder.path; highlightSelectedFolder(); };
-      div.ondblclick = (e) => { e.stopPropagation(); loadDirectory(folder.path); };
+      
+      div.onclick = (e) => {
+        e.stopPropagation();
+        selectedPath = folder.path;
+        highlightSelectedFolder();
+      };
+      div.ondblclick = (e) => {
+        e.stopPropagation();
+        loadDirectory(folder.path);
+      };
+      
       div.oncontextmenu = (e) => {
         e.preventDefault();
         e.stopPropagation();
         selectedPath = folder.path;
         highlightSelectedFolder();
+        
         const oldMenu = document.querySelector('.context-menu');
         if (oldMenu) oldMenu.remove();
+        
         const menu = document.createElement('div');
         menu.className = 'context-menu';
         menu.style.left = e.clientX + 'px';
@@ -742,11 +792,26 @@ function createFolderBrowser() {
           <div class="context-menu-item" data-action="delete">🗑️ Delete</div>
         \`;
         document.body.appendChild(menu);
-        menu.querySelector('[data-action="rename"]').onclick = () => { renameFolderItem(folder.path, folder.name); menu.remove(); };
-        menu.querySelector('[data-action="delete"]').onclick = () => { deleteFolderItem(folder.path, folder.name); menu.remove(); };
-        const closeMenu = (e) => { if (!menu.contains(e.target)) { menu.remove(); document.removeEventListener('click', closeMenu); } };
+        
+        menu.querySelector('[data-action="rename"]').onclick = () => {
+          renameFolderItem(folder.path, folder.name);
+          menu.remove();
+        };
+        
+        menu.querySelector('[data-action="delete"]').onclick = () => {
+          deleteFolderItem(folder.path, folder.name);
+          menu.remove();
+        };
+        
+        const closeMenu = (e) => {
+          if (!menu.contains(e.target)) {
+            menu.remove();
+            document.removeEventListener('click', closeMenu);
+          }
+        };
         setTimeout(() => document.addEventListener('click', closeMenu), 100);
       };
+      
       return div;
     }
     
@@ -754,9 +819,12 @@ function createFolderBrowser() {
       const container = document.getElementById('content');
       for (let i = 0; i < container.children.length; i++) {
         const child = container.children[i];
-        const p = child.getAttribute('data-path');
-        if (p === selectedPath) { child.classList.add('selected'); }
-        else { child.classList.remove('selected'); }
+        const path = child.getAttribute('data-path');
+        if (path === selectedPath) {
+          child.classList.add('selected');
+        } else {
+          child.classList.remove('selected');
+        }
       }
     }
     
@@ -764,14 +832,19 @@ function createFolderBrowser() {
       if (!dirPath || isLoading) return;
       isLoading = true;
       currentPath = dirPath;
-      const desktopPath = os.homedir() + '\\\\Desktop';
       let displayPath = dirPath;
-      if (dirPath === desktopPath) displayPath = 'Desktop';
-      else if (dirPath === os.homedir()) displayPath = 'Home';
+      const desktopPath = os.homedir() + '\\\\Desktop';
+      if (dirPath === desktopPath) {
+        displayPath = 'Desktop';
+      } else if (dirPath === os.homedir()) {
+        displayPath = 'Home';
+      }
       document.getElementById('currentPath').textContent = displayPath;
       document.getElementById('currentPath').title = dirPath;
+      
       try {
         const result = await ipcRenderer.invoke('folder-browser:scan', dirPath);
+        
         if (result.success) {
           items = result.items;
           renderItems();
@@ -786,16 +859,32 @@ function createFolderBrowser() {
       }
     }
     
-    // ✅ FIX 2: после создания папки берём свежий items из ответа и перерисовываем весь список
     async function createNewFolder() {
       const defaultName = getUniqueFolderName('New Folder');
       showModal('New Folder Name', defaultName, async (folderName) => {
         const result = await ipcRenderer.invoke('folder-browser:create-folder', currentPath, folderName);
         if (result.success) {
-          items = result.items;
-          selectedPath = result.path;
-          renderItems();
+          const newFolder = {
+            name: folderName,
+            path: result.path,
+            isDirectory: true,
+            isShortcut: false,
+            isAudio: false,
+            size: 0
+          };
+          
+          items.push(newFolder);
+          items.sort((a, b) => {
+            if (a.isDirectory && !b.isDirectory) return -1;
+            if (!a.isDirectory && b.isDirectory) return 1;
+            return a.name.localeCompare(b.name);
+          });
+          
+          const container = document.getElementById('content');
+          const div = createFolderElement(newFolder);
+          container.appendChild(div);
           updateStats();
+          selectedPath = result.path;
           highlightSelectedFolder();
         } else {
           alert('Failed to create folder: ' + result.error);
@@ -803,34 +892,56 @@ function createFolderBrowser() {
       });
     }
     
-    // ✅ FIX 2: после переименования тоже перерисовываем весь список
     async function renameFolderItem(itemPath, currentName) {
       showModal('Rename Folder', currentName, async (newName) => {
         if (newName === currentName) return;
+        
         const exists = items.some(i => i.isDirectory && i.name === newName && i.path !== itemPath);
-        if (exists) { alert('A folder with this name already exists!'); return; }
+        if (exists) {
+          alert('A folder with this name already exists!');
+          return;
+        }
+        
         const result = await ipcRenderer.invoke('folder-browser:rename-folder', itemPath, newName);
         if (result.success) {
-          if (selectedPath === itemPath) selectedPath = result.newPath;
-          items = result.items;
-          renderItems();
-          highlightSelectedFolder();
+          const itemIndex = items.findIndex(i => i.path === itemPath);
+          if (itemIndex !== -1) {
+            items[itemIndex].name = newName;
+            items[itemIndex].path = result.newPath;
+            
+            const div = document.querySelector(\`.item[data-path="\${itemPath}"]\`);
+            if (div) {
+              const nameSpan = div.querySelector('.name');
+              if (nameSpan) nameSpan.textContent = newName;
+              div.setAttribute('data-path', result.newPath);
+            }
+            
+            if (selectedPath === itemPath) {
+              selectedPath = result.newPath;
+            }
+          }
         } else {
           alert('Failed to rename folder: ' + result.error);
         }
       });
     }
     
-    // ✅ FIX 2: после удаления тоже перерисовываем весь список
     async function deleteFolderItem(itemPath, itemName) {
-      showConfirm(\`⚠️ Delete folder "\${itemName}"?\\n\\nThis will delete the folder and ALL files inside it!\\nThis action cannot be undone.\`, async (confirmed) => {
+      showConfirm(\`⚠️ Delete folder "\${itemName}"?\n\nThis will delete the folder and ALL files inside it!\nThis action cannot be undone.\`, async (confirmed) => {
         if (!confirmed) return;
         const result = await ipcRenderer.invoke('folder-browser:delete-folder', itemPath);
         if (result.success) {
-          if (selectedPath === itemPath) selectedPath = '';
-          items = result.items;
-          renderItems();
-          updateStats();
+          const itemIndex = items.findIndex(i => i.path === itemPath);
+          if (itemIndex !== -1) {
+            items.splice(itemIndex, 1);
+            const div = document.querySelector(\`.item[data-path="\${itemPath}"]\`);
+            if (div) div.remove();
+            updateStats();
+            
+            if (selectedPath === itemPath) {
+              selectedPath = '';
+            }
+          }
         } else {
           alert('Failed to delete folder: ' + result.error);
         }
@@ -854,7 +965,9 @@ function createFolderBrowser() {
         container.innerHTML = '<div class="empty">📁 Folder is empty</div>';
         return;
       }
+      
       container.innerHTML = '';
+      
       for (const item of items) {
         if (item.isDirectory) {
           const div = createFolderElement(item);
@@ -875,29 +988,31 @@ function createFolderBrowser() {
     }
     
     document.getElementById('driveSelect').onchange = (e) => {
-      const p = e.target.value;
-      if (p) { selectedPath = ''; loadDirectory(p); }
+      const path = e.target.value;
+      if (path) {
+        selectedPath = '';
+        loadDirectory(path);
+      }
     };
+    
     document.getElementById('upBtn').onclick = () => {
       const parent = getParentPath(currentPath);
-      if (parent) { selectedPath = ''; loadDirectory(parent); }
+      if (parent) {
+        selectedPath = '';
+        loadDirectory(parent);
+      }
     };
+    
     document.getElementById('desktopBtn').onclick = () => {
       const desktopPath = os.homedir() + '\\\\Desktop';
       selectedPath = '';
       loadDirectory(desktopPath);
     };
-    document.getElementById('newFolderBtn').onclick = () => createNewFolder();
-    document.getElementById('refreshBtn').onclick = async () => {
-      if (!currentPath) return;
-      const result = await ipcRenderer.invoke('folder-browser:scan-fresh', currentPath);
-      if (result.success) {
-        items = result.items;
-        renderItems();
-        updateStats();
-        highlightSelectedFolder();
-      }
+    
+    document.getElementById('newFolderBtn').onclick = () => {
+      createNewFolder();
     };
+    
     document.getElementById('selectBtn').onclick = () => {
       const folderToSelect = selectedPath || currentPath;
       if (folderToSelect && folderToSelect !== '/' && folderToSelect !== '') {
@@ -906,14 +1021,15 @@ function createFolderBrowser() {
         alert('Select a folder');
       }
     };
-    document.getElementById('cancelBtn').onclick = () => ipcRenderer.send('folder-browser:cancel');
+    
+    document.getElementById('cancelBtn').onclick = () => {
+      ipcRenderer.send('folder-browser:cancel');
+    };
     
     let watchedPath = '';
 
-    // Получаем уведомление от main процесса об изменении папки
     ipcRenderer.on('folder-browser:changed', (event, { dirPath, items: newItems }) => {
       if (dirPath === currentPath) {
-        console.log('📂 Directory changed, refreshing:', dirPath);
         items = newItems;
         renderItems();
         updateStats();
@@ -929,7 +1045,6 @@ function createFolderBrowser() {
       await ipcRenderer.invoke('folder-browser:watch', dirPath).catch(() => {});
     }
 
-    // Патчим loadDirectory чтобы при каждом переходе подписываться на новую папку
     const _origLoad = loadDirectory;
     loadDirectory = async function(dirPath) {
       await _origLoad(dirPath);
@@ -952,7 +1067,6 @@ function createFolderBrowser() {
   });
   
   browserWindow.on('closed', () => {
-    // Закрываем все активные watchers
     for (const [, watcher] of dirWatchers) {
       try { watcher.close(); } catch(e) {}
     }
