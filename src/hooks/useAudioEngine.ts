@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { usePlayer } from "@/store/playerStore";
+import { useSettings } from "@/store/settingsStore";
 
 const isBrowser = typeof window !== 'undefined';
 
@@ -141,6 +142,8 @@ export function useTrackUrl(track: { path: string; url?: string; id?: string; na
     setStatusRef.current = usePlayer.getState().setStatus;
     addBrokenTrackRef.current = usePlayer.getState().addBrokenTrack;
   });
+  // ✅ Счётчик битых файлов подряд
+  const brokenCountRef = useRef(0);
 
   useEffect(() => {
     let revoked: string | undefined;
@@ -189,25 +192,24 @@ export function useTrackUrl(track: { path: string; url?: string; id?: string; na
         if (cancelled) return;
 
         const ext = trackPath.split('.').pop()?.toLowerCase();
-        let mimeType = 'audio/mpeg';
-        
-        if (ext === 'mp4' || ext === 'm4a' || ext === 'm4b' || ext === 'm4r' || ext === 'm4p') {
-          mimeType = 'audio/mp4';
-        } else if (ext === 'mp3') {
-          mimeType = 'audio/mpeg';
-        } else if (ext === 'wav') {
-          mimeType = 'audio/wav';
-        } else if (ext === 'flac') {
-          mimeType = 'audio/flac';
-        } else if (ext === 'aac') {
-          mimeType = 'audio/aac';
-        } else if (ext === 'ogg' || ext === 'oga') {
-          mimeType = 'audio/ogg';
-        } else if (ext === 'opus') {
-          mimeType = 'audio/opus';
-        } else if (ext === 'webm') {
-          mimeType = 'audio/webm';
-        }
+        // ✅ FIX AIFF: правильный MIME чтобы не ломал соседние треки
+        const MIME_MAP: Record<string, string> = {
+          mp3: 'audio/mpeg', mp2: 'audio/mpeg', mpa: 'audio/mpeg', mpga: 'audio/mpeg',
+          wav: 'audio/wav',
+          flac: 'audio/flac',
+          aac: 'audio/aac',
+          ogg: 'audio/ogg', oga: 'audio/ogg',
+          opus: 'audio/opus',
+          webm: 'audio/webm',
+          mp4: 'audio/mp4', m4a: 'audio/mp4', m4b: 'audio/mp4', m4r: 'audio/mp4', m4p: 'audio/mp4',
+          aiff: 'audio/aiff', aif: 'audio/aiff', aifc: 'audio/aiff',
+          wma: 'audio/x-ms-wma',
+          ape: 'audio/ape',
+          wv: 'audio/x-wavpack',
+          tta: 'audio/tta',
+          alac: 'audio/mp4',
+        };
+        const mimeType = (ext && MIME_MAP[ext]) || 'audio/mpeg';
         
         const blob = new Blob([buf], { type: mimeType });
         const u = URL.createObjectURL(blob);
@@ -215,6 +217,7 @@ export function useTrackUrl(track: { path: string; url?: string; id?: string; na
         
         setUrl(u);
         setError(null);
+        brokenCountRef.current = 0; // ✅ сброс счётчика при успешной загрузке
         console.log('✅ Track URL created:', trackName, 'type:', mimeType);
         
       } catch (e) {
@@ -230,13 +233,21 @@ export function useTrackUrl(track: { path: string; url?: string; id?: string; na
         
         // ✅ FIX: помечаем битым только тот трек чей id/path совпадает
         if (trackId && trackName) {
-          // Проверяем что этот трек всё ещё существует в сторе и не помечен
           const currentTracks = usePlayer.getState().tracks;
           const trackInStore = currentTracks.find(t => t.id === trackId && t.path === trackPath);
           if (trackInStore && trackInStore.status !== 'error') {
             console.log('🔴 Marking as broken:', trackName);
             setStatusRef.current(trackId, "error");
             addBrokenTrackRef.current({ id: trackId, name: trackName, path: trackPath });
+
+            // ✅ Логика остановки при битых файлах
+            brokenCountRef.current += 1;
+            const { brokenStopMode, maxBrokenBeforeStop } = useSettings.getState();
+            if (brokenStopMode === 'stop' && brokenCountRef.current >= maxBrokenBeforeStop) {
+              console.warn(`🛑 Stopping: ${brokenCountRef.current} broken files in a row`);
+              usePlayer.getState().setIsPlaying(false);
+              brokenCountRef.current = 0;
+            }
           } else {
             console.log('⚠️ Track already handled or not found, skipping:', trackName);
           }

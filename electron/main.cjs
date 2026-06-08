@@ -259,7 +259,6 @@ function registerIpcHandlers() {
   ipcMain.handle("fs:readTags", async (_e, filePath) => {
     try {
       const tags = NodeID3.read(filePath);
-      if (!tags || tags === false) return null;
       return {
         title: tags.title,
         artist: tags.artist,
@@ -270,32 +269,21 @@ function registerIpcHandlers() {
           mime: tags.image.mime,
           type: tags.image.type,
           description: tags.image.description,
-          imageBuffer: tags.image.imageBuffer.toString("base64")
+          imageBuffer: tags.image.imageBuffer.toString('base64')
         } : null
       };
     } catch (err) {
-      console.error("Failed to read tags:", err);
+      console.error('Failed to read tags:', err);
       return null;
     }
   });
 
   ipcMain.handle("fs:updateTitle", async (_e, filePath, newTitle) => {
     try {
-      const ext = path.extname(filePath).slice(1).toLowerCase();
-      // NodeID3 поддерживает только MP3/ID3-совместимые форматы
-      // На wav/flac/ogg и т.д. возвращает false вместо объекта — это не ошибка
-      if (!['mp3', 'mp2', 'mpa', 'mpga', 'm4a', 'm4b', 'm4r', 'm4p'].includes(ext)) {
-        console.log(`ℹ️ Skipping ID3 title update for non-MP3 format: ${ext}`);
-        return { ok: true }; // не крашим, просто пропускаем
-      }
       const tags = NodeID3.read(filePath);
-      if (!tags || tags === false) {
-        console.log(`ℹ️ NodeID3 could not read tags from: ${path.basename(filePath)}`);
-        return { ok: true }; // не крашим
-      }
       tags.title = newTitle;
       const success = NodeID3.update(tags, filePath);
-      return { ok: !!success };
+      return { ok: success };
     } catch (err) {
       console.error('Failed to update title:', err);
       return { ok: false, error: err.message };
@@ -305,22 +293,24 @@ function registerIpcHandlers() {
   ipcMain.handle("fs:updateCover", async (_e, filePath, coverBase64) => {
     try {
       const tags = NodeID3.read(filePath);
-      if (!tags || tags === false) return { ok: true }; // не MP3 — пропускаем без краша
       if (coverBase64) {
-        const imageBuffer = Buffer.from(coverBase64.split(",")[1] || coverBase64, "base64");
+        const imageBuffer = Buffer.from(coverBase64.split(',')[1] || coverBase64, 'base64');
         tags.image = {
-          mime: "image/jpeg",
-          type: { id: 3, name: "front cover" },
-          description: "Cover",
+          mime: 'image/jpeg',
+          type: {
+            id: 3,
+            name: 'front cover'
+          },
+          description: 'Cover',
           imageBuffer: imageBuffer
         };
       } else {
         tags.image = null;
       }
       const success = NodeID3.update(tags, filePath);
-      return { ok: !!success };
+      return { ok: success };
     } catch (err) {
-      console.error("Failed to update cover:", err);
+      console.error('Failed to update cover:', err);
       return { ok: false, error: err.message };
     }
   });
@@ -329,22 +319,24 @@ function registerIpcHandlers() {
     try {
       const destPath = path.join(targetFolder, fileName);
       const tags = NodeID3.read(destPath);
-      if (!tags || tags === false) return { ok: true }; // не MP3 — пропускаем без краша
       if (coverBase64) {
-        const imageBuffer = Buffer.from(coverBase64.split(",")[1] || coverBase64, "base64");
+        const imageBuffer = Buffer.from(coverBase64.split(',')[1] || coverBase64, 'base64');
         tags.image = {
-          mime: "image/jpeg",
-          type: { id: 3, name: "front cover" },
-          description: "Cover",
+          mime: 'image/jpeg',
+          type: {
+            id: 3,
+            name: 'front cover'
+          },
+          description: 'Cover',
           imageBuffer: imageBuffer
         };
       } else {
         tags.image = null;
       }
       const success = NodeID3.update(tags, destPath);
-      return { ok: !!success };
+      return { ok: success };
     } catch (err) {
-      console.error("Failed to update cover on accept:", err);
+      console.error('Failed to update cover on accept:', err);
       return { ok: false, error: err.message };
     }
   });
@@ -355,7 +347,7 @@ function registerIpcHandlers() {
       const filePath = path.join(folderPath, fileName);
       
       const content = [
-        `Rhythm Sort - Broken Files Report`,
+        `Sortify - Broken Files Report`,
         `===============================`,
         `Folder: ${folderPath}`,
         `Date: ${new Date().toLocaleString()}`,
@@ -406,25 +398,19 @@ function registerIpcHandlers() {
     for await (const file of walk(folder)) {
       const ext = path.extname(file).slice(1).toLowerCase();
       const fileName = path.basename(file);
-
-      // Пропускаем всё что не является аудиофайлом (txt, jpg, ini и т.д.)
-      if (!ext || !AUDIO_EXTS.has(ext)) {
-        console.log(`Skipping non-audio file: ${fileName}`);
-        continue;
-      }
-
+      
       try {
         const stat = await fsp.stat(file);
         out.push({
           path: file,
           name: fileName,
           size: stat.size,
-          ext: ext
+          ext: ext || 'unknown'
         });
         fileCount++;
-        console.log(`Found audio [${fileCount}]: ${fileName} (${ext})`);
+        console.log(`📄 [${fileCount}] Found: ${fileName} (${ext || 'no extension'})`);
       } catch (err) {
-        console.error(`Error reading file: ${fileName}`, err);
+        console.error(`❌ Error reading file: ${fileName}`, err);
       }
     }
     
@@ -493,4 +479,185 @@ function registerIpcHandlers() {
     console.log(`⏭️ Skipping track: ${path.basename(src)}`);
     return { ok: true };
   });
+
+  // ✅ Чтение ПОЛНЫХ тегов (все поля)
+  ipcMain.handle("fs:readFullTags", async (_e, filePath) => {
+    try {
+      const tags = NodeID3.read(filePath);
+      if (!tags || tags === false) return null;
+      return {
+        title: tags.title || "",
+        artist: tags.artist || "",
+        album: tags.album || "",
+        year: tags.year || "",
+        genre: tags.genre || "",
+        trackNumber: tags.trackNumber || "",
+        comment: tags.comment?.text || "",
+        albumArtist: tags.performerInfo || "",
+        composer: tags.composer || "",
+        discNumber: tags.partOfSet || "",
+        bpm: tags.bpm || "",
+        initialKey: tags.initialKey || "",
+      };
+    } catch (err) {
+      console.error("Failed to read full tags:", err);
+      return null;
+    }
+  });
+
+  // ✅ Запись ПОЛНЫХ тегов
+  ipcMain.handle("fs:writeFullTags", async (_e, filePath, tagData) => {
+    try {
+      const ext = path.extname(filePath).slice(1).toLowerCase();
+      if (!["mp3", "mp2", "mpa", "mpga", "m4a", "m4b"].includes(ext)) {
+        return { ok: false, error: "Format does not support ID3 tags" };
+      }
+      const existingTags = NodeID3.read(filePath) || {};
+      const updatedTags = {
+        ...existingTags,
+        title: tagData.title ?? existingTags.title,
+        artist: tagData.artist ?? existingTags.artist,
+        album: tagData.album ?? existingTags.album,
+        year: tagData.year ?? existingTags.year,
+        genre: tagData.genre ?? existingTags.genre,
+        trackNumber: tagData.trackNumber ?? existingTags.trackNumber,
+        comment: tagData.comment ? { language: "eng", text: tagData.comment } : existingTags.comment,
+        performerInfo: tagData.albumArtist ?? existingTags.performerInfo,
+        composer: tagData.composer ?? existingTags.composer,
+        partOfSet: tagData.discNumber ?? existingTags.partOfSet,
+        bpm: tagData.bpm ?? existingTags.bpm,
+        initialKey: tagData.initialKey ?? existingTags.initialKey,
+      };
+      const success = NodeID3.update(updatedTags, filePath);
+      return { ok: !!success };
+    } catch (err) {
+      console.error("Failed to write full tags:", err);
+      return { ok: false, error: err.message };
+    }
+  });
+
+  // ✅ Анализ BPM через music-tempo
+  ipcMain.handle("fs:analyzeBpm", async (_e, filePath) => {
+    try {
+      const MusicTempo = require("music-tempo");
+      const AudioContext = require("web-audio-api").AudioContext;
+      const ctx = new AudioContext();
+      const buf = await fsp.readFile(filePath);
+      const audioBuffer = await new Promise((resolve, reject) => {
+        ctx.decodeAudioData(buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength), resolve, reject);
+      });
+      const channelData = audioBuffer.getChannelData(0);
+      const mt = new MusicTempo(channelData);
+      const bpm = Math.round(mt.tempo);
+      ctx.close();
+      console.log(`🎵 BPM analyzed: ${bpm} for ${path.basename(filePath)}`);
+      return { ok: true, bpm: String(bpm) };
+    } catch (err) {
+      console.error("BPM analysis failed:", err.message);
+      return { ok: false, error: err.message };
+    }
+  });
+
+  // ✅ Анализ тональности через @tonaljs/tonal
+  ipcMain.handle("fs:analyzeKey", async (_e, filePath) => {
+    try {
+      // Простой анализ через хроматограмму (Krumhansl-Schmuckler)
+      const AudioContext = require("web-audio-api").AudioContext;
+      const ctx = new AudioContext();
+      const buf = await fsp.readFile(filePath);
+      const audioBuffer = await new Promise((resolve, reject) => {
+        ctx.decodeAudioData(buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength), resolve, reject);
+      });
+      const channelData = audioBuffer.getChannelData(0);
+      const sampleRate = audioBuffer.sampleRate;
+      
+      // Профили Кромхансла-Шмакера
+      const majorProfile = [6.35, 2.23, 3.48, 2.33, 4.38, 4.09, 2.52, 5.19, 2.39, 3.66, 2.29, 2.88];
+      const minorProfile = [6.33, 2.68, 3.52, 5.38, 2.60, 3.53, 2.54, 4.75, 3.98, 2.69, 3.34, 3.17];
+      const noteNames = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+      
+      // Вычисляем хроматограмму
+      const chroma = new Array(12).fill(0);
+      const step = Math.floor(sampleRate / 12);
+      for (let i = 0; i < Math.min(channelData.length, sampleRate * 30); i++) {
+        const noteIndex = Math.floor((i / step)) % 12;
+        chroma[noteIndex] += Math.abs(channelData[i]);
+      }
+      
+      // Нормализация
+      const maxChroma = Math.max(...chroma);
+      const normChroma = chroma.map(v => maxChroma > 0 ? v / maxChroma : 0);
+      
+      // Корреляция с профилями
+      let bestScore = -Infinity;
+      let bestKey = "C";
+      let bestMode = "major";
+      
+      for (let root = 0; root < 12; root++) {
+        let majorScore = 0, minorScore = 0;
+        for (let i = 0; i < 12; i++) {
+          majorScore += normChroma[(i + root) % 12] * majorProfile[i];
+          minorScore += normChroma[(i + root) % 12] * minorProfile[i];
+        }
+        if (majorScore > bestScore) { bestScore = majorScore; bestKey = noteNames[root]; bestMode = "major"; }
+        if (minorScore > bestScore) { bestScore = minorScore; bestKey = noteNames[root]; bestMode = "minor"; }
+      }
+      
+      // Перевод в Camelot/Open Key нотацию
+      const camelotMap = {
+        "C major": "8B", "G major": "9B", "D major": "10B", "A major": "11B",
+        "E major": "12B", "B major": "1B", "F# major": "2B", "C# major": "3B",
+        "G# major": "4B", "D# major": "5B", "A# major": "6B", "F major": "7B",
+        "A minor": "8A", "E minor": "9A", "B minor": "10A", "F# minor": "11A",
+        "C# minor": "12A", "G# minor": "1A", "D# minor": "2A", "A# minor": "3A",
+        "F minor": "4A", "C minor": "5A", "G minor": "6A", "D minor": "7A",
+      };
+      const keyString = `${bestKey} ${bestMode}`;
+      const camelot = camelotMap[keyString] || keyString;
+      
+      ctx.close();
+      console.log(`🎼 Key analyzed: ${keyString} (${camelot}) for ${path.basename(filePath)}`);
+      return { ok: true, key: camelot, keyFull: keyString };
+    } catch (err) {
+      console.error("Key analysis failed:", err.message);
+      return { ok: false, error: err.message };
+    }
+  });
+
+  // ✅ Пакетное переименование по шаблону
+  ipcMain.handle("fs:batchRename", async (_e, filePath, template) => {
+    try {
+      const tags = NodeID3.read(filePath);
+      if (!tags || tags === false) return { ok: false, error: "Cannot read tags" };
+      
+      const ext = path.extname(filePath);
+      const dir = path.dirname(filePath);
+      
+      let newName = template
+        .replace("{Title}", tags.title || "Unknown")
+        .replace("{Artist}", tags.artist || "Unknown")
+        .replace("{Album}", tags.album || "Unknown")
+        .replace("{Year}", tags.year || "")
+        .replace("{Genre}", tags.genre || "")
+        .replace("{BPM}", tags.bpm || "000")
+        .replace("{Key}", tags.initialKey || "")
+        .replace("{TrackNumber}", tags.trackNumber || "");
+      
+      // Убираем недопустимые символы
+      newName = newName.replace(/[<>:"/\\|?*]/g, "_").trim();
+      
+      const newPath = path.join(dir, newName + ext);
+      const exists = await fsp.access(newPath).then(() => true).catch(() => false);
+      if (exists && newPath !== filePath) {
+        return { ok: false, error: "File already exists" };
+      }
+      
+      await fsp.rename(filePath, newPath);
+      return { ok: true, newPath, newName: newName + ext };
+    } catch (err) {
+      console.error("Batch rename failed:", err);
+      return { ok: false, error: err.message };
+    }
+  });
+
 }

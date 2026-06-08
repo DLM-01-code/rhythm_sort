@@ -3,8 +3,8 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
 export interface SplitBinding {
-  keyCode: string;        // KeyboardEvent.code (например "Digit1", "KeyF", "Quote")
-  keyDisplay: string;     // Для отображения (например "1", "F", "'")
+  keyCode: string;
+  keyDisplay: string;
   folderPath: string;
   folderName: string;
   createdAt: number;
@@ -16,9 +16,10 @@ interface SplitState {
   isWaitingForBinding: boolean;
   pendingFolderPath: string | null;
   pendingFolderName: string | null;
-  
-  // Actions
+  splitAutoNext: boolean; // ✅ переключатель авто-перехода в Split Mode
+
   setSplitMode: (enabled: boolean) => void;
+  setSplitAutoNext: (v: boolean) => void;
   startBindingMode: (folderPath: string, folderName: string) => void;
   cancelBindingMode: () => void;
   addBinding: (keyCode: string, keyDisplay: string, folderPath: string, folderName: string) => { success: boolean; conflict?: SplitBinding };
@@ -30,7 +31,6 @@ interface SplitState {
   getSortedBindings: () => SplitBinding[];
 }
 
-// Зарезервированные клавиши управления плеером
 const RESERVED_KEYS = new Set([
   "ArrowRight", "ArrowLeft", "Space", "ArrowUp", "ArrowDown",
   "KeyA", "KeyD", "KeyW", "KeyS"
@@ -44,89 +44,48 @@ export const useSplitStore = create<SplitState>()(
       isWaitingForBinding: false,
       pendingFolderPath: null,
       pendingFolderName: null,
-      
+      splitAutoNext: true, // по умолчанию авто-переход включён
+
       setSplitMode: (enabled) => {
-        console.log(`🔄 Split mode: ${enabled ? "ON" : "OFF"}`);
         set({ isSplitMode: enabled });
         if (!enabled) {
           set({ isWaitingForBinding: false, pendingFolderPath: null, pendingFolderName: null });
         }
       },
-      
+
+      setSplitAutoNext: (v) => set({ splitAutoNext: v }),
+
       startBindingMode: (folderPath, folderName) => {
-        set({
-          isWaitingForBinding: true,
-          pendingFolderPath: folderPath,
-          pendingFolderName: folderName
-        });
-        console.log(`⌨️ Waiting for key binding for folder: ${folderName}`);
+        set({ isWaitingForBinding: true, pendingFolderPath: folderPath, pendingFolderName: folderName });
       },
-      
+
       cancelBindingMode: () => {
-        set({
-          isWaitingForBinding: false,
-          pendingFolderPath: null,
-          pendingFolderName: null
-        });
-        console.log(`❌ Key binding cancelled`);
+        set({ isWaitingForBinding: false, pendingFolderPath: null, pendingFolderName: null });
       },
-      
+
       addBinding: (keyCode, keyDisplay, folderPath, folderName) => {
         const existing = get().bindings.find(b => b.keyCode === keyCode);
-        if (existing) {
-          console.warn(`⚠️ Key ${keyDisplay} already bound to ${existing.folderName}`);
-          return { success: false, conflict: existing };
-        }
-        
-        const newBinding: SplitBinding = {
-          keyCode,
-          keyDisplay,
-          folderPath,
-          folderName,
-          createdAt: Date.now()
-        };
-        
+        if (existing) return { success: false, conflict: existing };
+        const newBinding: SplitBinding = { keyCode, keyDisplay, folderPath, folderName, createdAt: Date.now() };
         set((state) => ({
           bindings: [...state.bindings, newBinding],
           isWaitingForBinding: false,
           pendingFolderPath: null,
           pendingFolderName: null
         }));
-        
-        console.log(`✅ Bound ${folderName} to key ${keyDisplay} (${keyCode})`);
         return { success: true };
       },
-      
+
       removeBinding: (keyCode) => {
-        set((state) => ({
-          bindings: state.bindings.filter(b => b.keyCode !== keyCode)
-        }));
-        console.log(`🗑️ Removed binding for key: ${keyCode}`);
+        set((state) => ({ bindings: state.bindings.filter(b => b.keyCode !== keyCode) }));
       },
-      
-      getBindingByKey: (keyCode) => {
-        return get().bindings.find(b => b.keyCode === keyCode);
-      },
-      
-      getAllBindings: () => {
-        return get().bindings;
-      },
-      
-      clearAllBindings: () => {
-        set({ bindings: [] });
-        console.log(`🗑️ All split bindings cleared`);
-      },
-      
-      isReservedKey: (keyCode) => {
-        return RESERVED_KEYS.has(keyCode);
-      },
-      
-      getSortedBindings: () => {
-        return [...get().bindings].sort((a, b) => a.keyDisplay.localeCompare(b.keyDisplay));
-      }
+
+      getBindingByKey: (keyCode) => get().bindings.find(b => b.keyCode === keyCode),
+      getAllBindings: () => get().bindings,
+      clearAllBindings: () => set({ bindings: [] }),
+      isReservedKey: (keyCode) => RESERVED_KEYS.has(keyCode),
+      getSortedBindings: () => [...get().bindings].sort((a, b) => a.keyDisplay.localeCompare(b.keyDisplay)),
     }),
-    {
-      name: "rhythm-sort-split-bindings",
-    }
+    { name: "rhythm-sort-split-bindings" }
   )
 );

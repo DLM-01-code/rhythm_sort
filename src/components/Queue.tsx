@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo, memo } from "react";
+import { useState, useCallback, useMemo, memo, useEffect, useRef } from "react";
 import { usePlayer } from "@/store/playerStore";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { CheckCircle, XCircle, AlertCircle, Music, Headphones, Image as ImageIcon } from "lucide-react";
@@ -18,13 +18,15 @@ const QueueItem = memo(({
   index, 
   isCurrent, 
   isPlaying, 
-  onTrackClick 
+  onTrackClick,
+  itemRef,
 }: { 
   track: any; 
   index: number; 
   isCurrent: boolean; 
   isPlaying: boolean; 
   onTrackClick: (index: number) => void;
+  itemRef?: (el: HTMLDivElement | null) => void;
 }) => {
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -71,6 +73,7 @@ const QueueItem = memo(({
 
   return (
     <div
+      ref={itemRef}
       className={getStatusClass()}
       onClick={() => onTrackClick(index)}
     >
@@ -103,6 +106,17 @@ QueueItem.displayName = 'QueueItem';
 export function Queue() {
   const { tracks, currentIndex, setIndex, isPlaying, setTrackCover, markCurrentAsPlayed } = usePlayer();
   const [isApplyingCover, setIsApplyingCover] = useState(false);
+  const currentItemRef = useRef<HTMLDivElement | null>(null);
+
+  // ✅ Авто-скролл к текущему треку
+  useEffect(() => {
+    if (currentItemRef.current) {
+      currentItemRef.current.scrollIntoView({
+        behavior: "smooth",
+        block: "nearest",
+      });
+    }
+  }, [currentIndex]);
 
   // Мемоизированный обработчик клика
   const handleTrackClick = useCallback((index: number) => {
@@ -182,6 +196,7 @@ export function Queue() {
         isCurrent={idx === currentIndex}
         isPlaying={isPlaying}
         onTrackClick={handleTrackClick}
+        itemRef={idx === currentIndex ? (el) => { currentItemRef.current = el; } : undefined}
       />
     ));
   }, [tracks, currentIndex, isPlaying, handleTrackClick]);

@@ -832,6 +832,8 @@ function createFolderBrowser() {
       if (!dirPath || isLoading) return;
       isLoading = true;
       currentPath = dirPath;
+      // ✅ Запоминаем последнюю папку
+      try { localStorage.setItem('folder-browser-last-path', dirPath); } catch {}
       let displayPath = dirPath;
       const desktopPath = os.homedir() + '\\\\Desktop';
       if (dirPath === desktopPath) {
@@ -1053,8 +1055,16 @@ function createFolderBrowser() {
 
     window.onload = async () => {
       await loadDrives();
-      const desktopPath = os.homedir() + '\\\\Desktop';
-      loadDirectory(desktopPath);
+      // ✅ Возвращаемся в последнюю папку
+      let startPath = '';
+      try { startPath = localStorage.getItem('folder-browser-last-path') || ''; } catch {}
+      if (!startPath) startPath = os.homedir() + '\\\\Desktop';
+      // Проверяем что папка ещё существует
+      try {
+        const fs = require('fs');
+        if (!fs.existsSync(startPath)) startPath = os.homedir() + '\\\\Desktop';
+      } catch {}
+      loadDirectory(startPath);
     };
   </script>
 </body>

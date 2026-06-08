@@ -8,6 +8,7 @@ import { Slider } from "@/components/ui/slider";
 import { Play, Pause, SkipBack, SkipForward, Volume2, VolumeX, Heart, X, RotateCcw, Pencil, Image as ImageIcon } from "lucide-react";
 import { Visualizer } from "@/components/Visualizer";
 import { CoverEditor } from "@/components/CoverEditor";
+import { TagsEditor } from "@/components/TagsEditor";
 import { toast } from "sonner";
 
 function cn(...classes: (string | boolean | undefined)[]) {
@@ -34,6 +35,11 @@ export function PlayerView() {
   const [editName, setEditName] = useState("");
   const [showCoverEditor, setShowCoverEditor] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [showSessionDialog, setShowSessionDialog] = useState(false);
+  const [sessionChecked, setSessionChecked] = useState(false);
+  const [showPrefixPanel, setShowPrefixPanel] = useState(false);
+  const [prefixes, setPrefixes] = useState<string[]>([]);
+  const [newPrefix, setNewPrefix] = useState("");
 
   const {
     tracks,
@@ -69,9 +75,13 @@ export function PlayerView() {
     vizSensitivity,
     performanceMode,
     coverApplyMode,
+    showTagsPanel,
+    continueSession,
+    analyzeBpm,
+    analyzeKey,
   } = useSettings();
 
-  const { isSplitMode, getBindingByKey, isWaitingForBinding } = useSplitStore();
+  const { isSplitMode, getBindingByKey, isWaitingForBinding, splitAutoNext } = useSplitStore();
 
   const currentTrack = tracks[currentIndex];
   const trackWithId = currentTrack ? { ...currentTrack, id: currentTrack.id } : undefined;
@@ -98,6 +108,21 @@ export function PlayerView() {
   useEffect(() => {
     setIsClient(true);
   }, []);
+
+  // ✅ Проверка сессии при старте
+  const { hasSession, saveSession } = usePlayer();
+  useEffect(() => {
+    if (sessionChecked) return;
+    setSessionChecked(true);
+    if (continueSession && hasSession()) {
+      setShowSessionDialog(true);
+    }
+  }, []);
+
+  // ✅ Автосохранение сессии при смене трека
+  useEffect(() => {
+    if (tracks.length > 0) saveSession();
+  }, [currentIndex]);
 
   useEffect(() => {
     if (trackError && currentTrack && currentTrack.status !== "error" && !errorHandledRef.current.has(currentTrack.id)) {
@@ -237,6 +262,28 @@ export function PlayerView() {
           setStatus(currentTrack.id, acceptMode === "move" ? "moved" : "accepted");
           if (coverApplyMode === "onAccept" && currentTrack.cover) {
             await api.updateCoverOnAccept(targetFolder, currentTrack.name, currentTrack.cover);
+          }
+          // ✅ BPM/Key анализ при Accept
+          if ((analyzeBpm || analyzeKey) && (api as any).analyzeBpm) {
+            try {
+              const dest = acceptMode === "move" ? currentTrack.path : `${targetFolder}/${currentTrack.name}`;
+              const tagUpdates: Record<string, string> = {};
+              if (analyzeBpm) {
+                const bpmResult = await (api as any).analyzeBpm(dest);
+                if (bpmResult?.ok) tagUpdates.bpm = bpmResult.bpm;
+              }
+              if (analyzeKey) {
+                const keyResult = await (api as any).analyzeKey(dest);
+                if (keyResult?.ok) tagUpdates.initialKey = keyResult.key;
+              }
+              if (Object.keys(tagUpdates).length > 0) {
+                await (api as any).writeFullTags(dest, tagUpdates);
+                const parts = [];
+                if (tagUpdates.bpm) parts.push("BPM: " + tagUpdates.bpm);
+                if (tagUpdates.initialKey) parts.push("Key: " + tagUpdates.initialKey);
+                toast.info("🎵 " + parts.join(" | "));
+              }
+            } catch (err) { console.warn("BPM/Key analysis failed:", err); }
           }
           if (result.skipped) {
             toast.warning(`⚠️ File already exists, skipped: ${currentTrack.name}`);
@@ -424,7 +471,7 @@ export function PlayerView() {
           </p>
           <div className="pt-8 text-muted-foreground">
             <p className="text-sm">✨ Ready to sort your music collection ✨</p>
-            <p className="text-xs mt-2">🎧 Have a nice day 🎧</p>
+            <p className="text-xs mt-2">🎧 Drag & drop a folder or use the button above</p>
           </div>
         </div>
       </div>
@@ -492,7 +539,7 @@ export function PlayerView() {
                   variant="ghost"
                   size="sm"
                   className="opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8 p-0"
-                  onClick={() => { setEditName(currentTrack.name); setIsEditing(true); }}
+                  onClick={() => { setEditName(currentTrack.name.replace(/\.[^.]+$/, "")); setIsEditing(true); }}
                   title="Rename track"
                   disabled={isSaving}
                 >
@@ -507,6 +554,16 @@ export function PlayerView() {
                   disabled={isSaving}
                 >
                   <ImageIcon className="w-4 h-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8 p-0"
+                  onClick={() => setShowPrefixPanel(p => !p)}
+                  title="Prefix manager"
+                  disabled={isSaving}
+                >
+                  <span className="text-xs font-bold text-muted-foreground">[P]</span>
                 </Button>
               </>
             )}
@@ -643,6 +700,105 @@ export function PlayerView() {
           Accept
         </Button>
       </div>
+
+      {/* ✅ Prefix Panel */}
+      {showPrefixPanel && currentTrack && currentTrack.status !== "error" && (
+        <div className="border-t border-border bg-card/40 px-4 py-3 space-y-2 flex-shrink-0">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-medium text-muted-foreground">Filename Prefixes</span>
+            <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={() => setShowPrefixPanel(false)}>✗</Button>
+          </div>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={newPrefix}
+              onChange={e => setNewPrefix(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === "Enter" && newPrefix.trim()) {
+                  setPrefixes(prev => [...prev, newPrefix.trim()]);
+                  setNewPrefix("");
+                }
+              }}
+              placeholder="Type prefix and press Enter"
+              className="flex-1 h-7 px-2 text-xs rounded border border-border bg-background focus:outline-none focus:ring-1 focus:ring-primary"
+            />
+            <Button size="sm" className="h-7 px-2 text-xs" onClick={() => {
+              if (newPrefix.trim()) { setPrefixes(prev => [...prev, newPrefix.trim()]); setNewPrefix(""); }
+            }}>Add</Button>
+          </div>
+          {prefixes.length > 0 && (
+            <div className="flex flex-wrap gap-1">
+              {prefixes.map((p, i) => (
+                <div key={i} className="flex items-center gap-1 bg-primary/10 rounded px-2 py-0.5 text-xs">
+                  <span className="font-mono">{p}</span>
+                  <button onClick={() => setPrefixes(prev => prev.filter((_, idx) => idx !== i))} className="text-muted-foreground hover:text-destructive">✗</button>
+                </div>
+              ))}
+            </div>
+          )}
+          {prefixes.length > 0 && (
+            <div className="flex gap-2">
+              <Button size="sm" variant="outline" className="h-7 text-xs flex-1" onClick={async () => {
+                const api = window.electronAPI;
+                if (!api || !currentTrack) return;
+                const prefix = prefixes.join(" ");
+                const newName = prefix + " " + currentTrack.name.replace(/\.[^.]+$/, "");
+                const success = await renameTrack(currentTrack.id, newName);
+                if (success) toast.success(`Renamed: ${newName}`);
+                else toast.error("Rename failed");
+              }}>
+                Apply to current
+              </Button>
+              <Button size="sm" variant="outline" className="h-7 text-xs flex-1" onClick={async () => {
+                const api = window.electronAPI;
+                if (!api) return;
+                const prefix = prefixes.join(" ");
+                let ok = 0; let fail = 0;
+                for (const t of tracks) {
+                  if (t.status === "error" || t.status === "moved") continue;
+                  if (t.name.startsWith(prefix)) continue;
+                  const newName = prefix + " " + t.name.replace(/\.[^.]+$/, "");
+                  const success = await renameTrack(t.id, newName);
+                  if (success) ok++; else fail++;
+                }
+                toast.success(`Applied prefix to ${ok} tracks${fail > 0 ? `, ${fail} failed` : ""}`);
+              }}>
+                Apply to all
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ✅ Tags Panel */}
+      {showTagsPanel && currentTrack && currentTrack.status !== "error" && (
+        <TagsEditor
+          filePath={currentTrack.path}
+          trackName={currentTrack.name}
+        />
+      )}
+
+      {/* ✅ Continue Session Dialog */}
+      {showSessionDialog && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center">
+          <div className="bg-card border border-border rounded-xl p-6 max-w-sm w-full mx-4 space-y-4 shadow-2xl">
+            <h3 className="font-semibold text-base">Continue previous session?</h3>
+            <p className="text-sm text-muted-foreground">
+              A previous sorting session was found. Would you like to continue from where you left off?
+            </p>
+            <div className="flex gap-3 justify-end">
+              <Button variant="outline" size="sm" onClick={() => {
+                usePlayer.getState().clearSession();
+                setShowSessionDialog(false);
+              }}>Start Fresh</Button>
+              <Button size="sm" onClick={() => {
+                setShowSessionDialog(false);
+                toast.success("Continuing previous session");
+              }}>Continue</Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showCoverEditor && currentTrack && (
         <CoverEditor
