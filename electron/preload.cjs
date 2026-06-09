@@ -3,7 +3,7 @@ const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('electronAPI', {
   // Folder selection
   selectFolder: () => ipcRenderer.invoke('dialog:selectFolder'),
-  selectFolderWithPreview: () => ipcRenderer.invoke('dialog:selectFolderWithPreview'),
+  selectFolderWithPreview: (startPath) => ipcRenderer.invoke('dialog:selectFolderWithPreview', startPath),
   selectFiles: () => ipcRenderer.invoke('dialog:selectFiles'),
 
   // File system operations

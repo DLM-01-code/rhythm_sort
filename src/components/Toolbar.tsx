@@ -74,7 +74,7 @@ export function Toolbar({ onOpenSettings }: { onOpenSettings: () => void }) {
     try {
       const api = isBrowser ? window.electronAPI : null;
       if (api) {
-        const folder = await api.selectFolderWithPreview();
+        const folder = await api.selectFolderWithPreview(sourceFolder || undefined);
         if (!folder) return;
         if (isSameFolder(folder, targetFolder)) {
           toast.error("Source folder cannot be the same as Target folder!");
@@ -125,7 +125,7 @@ export function Toolbar({ onOpenSettings }: { onOpenSettings: () => void }) {
   const pickTargetFolder = useCallback(async () => {
     const api = isBrowser ? window.electronAPI : null;
     if (api) {
-      const folder = await api.selectFolderWithPreview();
+      const folder = await api.selectFolderWithPreview(targetFolder || undefined);
       if (folder) {
         if (isSameFolder(folder, sourceFolder)) {
           toast.error("Target folder cannot be the same as Source folder!");

@@ -35,8 +35,6 @@ export function PlayerView() {
   const [editName, setEditName] = useState("");
   const [showCoverEditor, setShowCoverEditor] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [showSessionDialog, setShowSessionDialog] = useState(false);
-  const [sessionChecked, setSessionChecked] = useState(false);
   const [showPrefixPanel, setShowPrefixPanel] = useState(false);
   const [prefixes, setPrefixes] = useState<string[]>([]);
   const [newPrefix, setNewPrefix] = useState("");
@@ -76,7 +74,6 @@ export function PlayerView() {
     performanceMode,
     coverApplyMode,
     showTagsPanel,
-    continueSession,
     analyzeBpm,
     analyzeKey,
   } = useSettings();
@@ -109,17 +106,8 @@ export function PlayerView() {
     setIsClient(true);
   }, []);
 
-  // ✅ Проверка сессии при старте
-  const { hasSession, saveSession } = usePlayer();
-  useEffect(() => {
-    if (sessionChecked) return;
-    setSessionChecked(true);
-    if (continueSession && hasSession()) {
-      setShowSessionDialog(true);
-    }
-  }, []);
-
   // ✅ Автосохранение сессии при смене трека
+  const { saveSession } = usePlayer();
   useEffect(() => {
     if (tracks.length > 0) saveSession();
   }, [currentIndex]);
@@ -737,34 +725,54 @@ export function PlayerView() {
             </div>
           )}
           {prefixes.length > 0 && (
-            <div className="flex gap-2">
-              <Button size="sm" variant="outline" className="h-7 text-xs flex-1" onClick={async () => {
-                const api = window.electronAPI;
-                if (!api || !currentTrack) return;
+            <div className="grid grid-cols-2 gap-1">
+              <Button size="sm" variant="outline" className="h-7 text-xs" onClick={async () => {
+                if (!currentTrack) return;
                 const prefix = prefixes.join(" ");
-                const newName = prefix + " " + currentTrack.name.replace(/\.[^.]+$/, "");
+                const ext = currentTrack.name.match(/\.[^.]+$/)?.[0] || "";
+                const baseName = currentTrack.name.slice(0, currentTrack.name.length - ext.length);
+                const newName = prefix + " " + baseName;
                 const success = await renameTrack(currentTrack.id, newName);
-                if (success) toast.success(`Renamed: ${newName}`);
+                if (success) toast.success("Prefix applied");
                 else toast.error("Rename failed");
-              }}>
-                Apply to current
-              </Button>
-              <Button size="sm" variant="outline" className="h-7 text-xs flex-1" onClick={async () => {
-                const api = window.electronAPI;
-                if (!api) return;
+              }}>+ Apply to current</Button>
+              <Button size="sm" variant="outline" className="h-7 text-xs" onClick={async () => {
                 const prefix = prefixes.join(" ");
                 let ok = 0; let fail = 0;
                 for (const t of tracks) {
                   if (t.status === "error" || t.status === "moved") continue;
-                  if (t.name.startsWith(prefix)) continue;
-                  const newName = prefix + " " + t.name.replace(/\.[^.]+$/, "");
-                  const success = await renameTrack(t.id, newName);
+                  const ext = t.name.match(/\.[^.]+$/)?.[0] || "";
+                  const baseName = t.name.slice(0, t.name.length - ext.length);
+                  if (baseName.startsWith(prefix)) continue;
+                  const success = await renameTrack(t.id, prefix + " " + baseName);
                   if (success) ok++; else fail++;
                 }
-                toast.success(`Applied prefix to ${ok} tracks${fail > 0 ? `, ${fail} failed` : ""}`);
-              }}>
-                Apply to all
-              </Button>
+                toast.success(`Applied to ${ok} tracks${fail > 0 ? ", " + fail + " failed" : ""}`);
+              }}>+ Apply to all</Button>
+              <Button size="sm" variant="outline" className="h-7 text-xs text-orange-400 border-orange-400/30 hover:bg-orange-400/10" onClick={async () => {
+                if (!currentTrack) return;
+                const prefix = prefixes.join(" ") + " ";
+                const ext = currentTrack.name.match(/\.[^.]+$/)?.[0] || "";
+                const baseName = currentTrack.name.slice(0, currentTrack.name.length - ext.length);
+                if (!baseName.startsWith(prefix)) { toast.info("Prefix not found in this track"); return; }
+                const newName = baseName.slice(prefix.length);
+                const success = await renameTrack(currentTrack.id, newName);
+                if (success) toast.success("Prefix removed");
+                else toast.error("Failed");
+              }}>- Remove from current</Button>
+              <Button size="sm" variant="outline" className="h-7 text-xs text-orange-400 border-orange-400/30 hover:bg-orange-400/10" onClick={async () => {
+                const prefix = prefixes.join(" ") + " ";
+                let ok = 0; let skip = 0; let fail = 0;
+                for (const t of tracks) {
+                  if (t.status === "error" || t.status === "moved") continue;
+                  const ext = t.name.match(/\.[^.]+$/)?.[0] || "";
+                  const baseName = t.name.slice(0, t.name.length - ext.length);
+                  if (!baseName.startsWith(prefix)) { skip++; continue; }
+                  const success = await renameTrack(t.id, baseName.slice(prefix.length));
+                  if (success) ok++; else fail++;
+                }
+                toast.success("Removed from " + ok + " tracks" + (skip > 0 ? ", " + skip + " skipped" : "") + (fail > 0 ? ", " + fail + " failed" : ""));
+              }}>- Remove from all</Button>
             </div>
           )}
         </div>
@@ -776,28 +784,6 @@ export function PlayerView() {
           filePath={currentTrack.path}
           trackName={currentTrack.name}
         />
-      )}
-
-      {/* ✅ Continue Session Dialog */}
-      {showSessionDialog && (
-        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center">
-          <div className="bg-card border border-border rounded-xl p-6 max-w-sm w-full mx-4 space-y-4 shadow-2xl">
-            <h3 className="font-semibold text-base">Continue previous session?</h3>
-            <p className="text-sm text-muted-foreground">
-              A previous sorting session was found. Would you like to continue from where you left off?
-            </p>
-            <div className="flex gap-3 justify-end">
-              <Button variant="outline" size="sm" onClick={() => {
-                usePlayer.getState().clearSession();
-                setShowSessionDialog(false);
-              }}>Start Fresh</Button>
-              <Button size="sm" onClick={() => {
-                setShowSessionDialog(false);
-                toast.success("Continuing previous session");
-              }}>Continue</Button>
-            </div>
-          </div>
-        </div>
       )}
 
       {showCoverEditor && currentTrack && (

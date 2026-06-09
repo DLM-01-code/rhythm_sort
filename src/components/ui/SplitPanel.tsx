@@ -34,7 +34,6 @@ export function SplitPanel() {
   const [resizing, setResizing] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [resizeStart, setResizeStart] = useState({ x: 0, y: 0, w: 320, h: 420 });
-  const [expandedKey, setExpandedKey] = useState<string | null>(null);
 
   useEffect(() => {
     try {
@@ -203,20 +202,10 @@ export function SplitPanel() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-xs font-bold text-primary leading-tight">Key: {b.keyDisplay}</p>
-                        {/* Клик показывает полный путь */}
-                        <button
-                          className="text-left w-full mt-0.5"
-                          onClick={() => setExpandedKey(expandedKey === b.keyCode ? null : b.keyCode)}
-                          title={expandedKey === b.keyCode ? "Click to collapse" : "Click to show full path"}
-                        >
-                          {expandedKey === b.keyCode ? (
-                            <p className="text-[10px] text-muted-foreground break-all leading-tight">{b.folderPath}</p>
-                          ) : (
-                            <p className="text-[10px] text-muted-foreground truncate leading-tight">
-                              📁 {getLastFolder(b.folderPath)}
-                            </p>
-                          )}
-                        </button>
+                        {/* Показываем полный путь */}
+                        <p className="text-[10px] text-muted-foreground break-all leading-tight mt-0.5">
+                          {b.folderPath}
+                        </p>
                       </div>
                       <Button
                         variant="ghost" size="sm"

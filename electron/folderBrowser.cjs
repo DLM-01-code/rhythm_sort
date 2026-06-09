@@ -316,9 +316,15 @@ async function deleteFolder(folderPath) {
 
 async function trashFolder(folderPath) {
   try {
-    const escapedPath = folderPath.replace(/'/g, "''");
-    const psScript = `Add-Type -AssemblyName Microsoft.VisualBasic; [Microsoft.VisualBasic.FileIO.FileSystem]::DeleteDirectory('${escapedPath}', 'OnlyErrorDialogs', 'SendToRecycleBin')`;
-    await execPromise(`powershell -NoProfile -Command "${psScript}"`, { timeout: 8000 });
+    // Экранируем путь для PowerShell
+    const escapedPath = folderPath.replace(/\\/g, '\\\\').replace(/'/g, "''");
+    // Пишем скрипт во временный файл чтобы избежать проблем с экранированием в командной строке
+    const tmpScript = path.join(os.tmpdir(), 'rs_trash_' + Date.now() + '.ps1');
+    const scriptContent = `Add-Type -AssemblyName Microsoft.VisualBasic\r\n[Microsoft.VisualBasic.FileIO.FileSystem]::DeleteDirectory('${escapedPath}', 'OnlyErrorDialogs', 'SendToRecycleBin')`;
+    const fss = require('fs');
+    fss.writeFileSync(tmpScript, scriptContent, 'utf8');
+    await execPromise(`powershell -NoProfile -ExecutionPolicy Bypass -File "${tmpScript}"`, { timeout: 8000 });
+    try { fss.unlinkSync(tmpScript); } catch {}
     const parentPath = path.dirname(folderPath);
     globalCache.delete(parentPath);
     globalCache.delete(folderPath);
@@ -417,7 +423,7 @@ function registerHandlers() {
   setTimeout(() => startBackgroundPreload(), 1000);
 }
 
-function createFolderBrowser() {
+function createFolderBrowser(startPathOverride) {
   registerHandlers();
   
   if (browserWindow) {
@@ -789,7 +795,8 @@ function createFolderBrowser() {
         menu.style.top = e.clientY + 'px';
         menu.innerHTML = \`
           <div class="context-menu-item" data-action="rename">✏️ Rename</div>
-          <div class="context-menu-item" data-action="delete">🗑️ Delete</div>
+          <div class="context-menu-item" data-action="trash">♻️ Move to Trash</div>
+          <div class="context-menu-item" data-action="delete">🗑️ Delete Permanently</div>
         \`;
         document.body.appendChild(menu);
         
@@ -797,7 +804,18 @@ function createFolderBrowser() {
           renameFolderItem(folder.path, folder.name);
           menu.remove();
         };
-        
+        menu.querySelector('[data-action="trash"]').onclick = async () => {
+          menu.remove();
+          const result = await ipcRenderer.invoke('folder-browser:trash-folder', folder.path);
+          if (result.success) {
+            if (selectedPath === folder.path) selectedPath = '';
+            items = result.items;
+            renderItems();
+            updateStats();
+          } else {
+            alert('Failed to move to trash: ' + result.error);
+          }
+        };
         menu.querySelector('[data-action="delete"]').onclick = () => {
           deleteFolderItem(folder.path, folder.name);
           menu.remove();
@@ -1053,16 +1071,19 @@ function createFolderBrowser() {
       watchCurrentDir(dirPath);
     };
 
+    // startPathOverride передаётся из main процесса через атрибут окна
+    const __startOverride = window.__startPathOverride || '';
+
     window.onload = async () => {
       await loadDrives();
-      // ✅ Возвращаемся в последнюю папку
-      let startPath = '';
-      try { startPath = localStorage.getItem('folder-browser-last-path') || ''; } catch {}
+      let startPath = __startOverride;
+      if (!startPath) {
+        try { startPath = localStorage.getItem('folder-browser-last-path') || ''; } catch {}
+      }
       if (!startPath) startPath = os.homedir() + '\\\\Desktop';
-      // Проверяем что папка ещё существует
       try {
-        const fs = require('fs');
-        if (!fs.existsSync(startPath)) startPath = os.homedir() + '\\\\Desktop';
+        const fsCheck = require('fs');
+        if (!fsCheck.existsSync(startPath)) startPath = os.homedir() + '\\\\Desktop';
       } catch {}
       loadDirectory(startPath);
     };
@@ -1071,6 +1092,16 @@ function createFolderBrowser() {
 </html>`;
 
   browserWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`);
+
+  // Inject startPathOverride before page scripts run
+  if (startPathOverride) {
+    browserWindow.webContents.once('did-finish-load', () => {
+      const escaped = startPathOverride.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+      browserWindow.webContents.executeJavaScript(
+        `window.__startPathOverride = '${escaped}';`
+      ).catch(() => {});
+    });
+  }
   
   browserWindow.once('ready-to-show', () => {
     browserWindow.show();

@@ -137,11 +137,11 @@ function registerIpcHandlers() {
     return r.filePaths[0];
   });
 
-  ipcMain.handle("dialog:selectFolderWithPreview", async () => {
-    console.log('📁 Custom folder browser with preview called');
+  ipcMain.handle("dialog:selectFolderWithPreview", async (_e, startPath) => {
+    console.log('📁 Custom folder browser with preview called, startPath:', startPath);
     try {
       const { createFolderBrowser } = await import('./folderBrowser.cjs');
-      const selectedFolder = await createFolderBrowser();
+      const selectedFolder = await createFolderBrowser(startPath || null);
       console.log('📁 Selected folder:', selectedFolder);
       return selectedFolder;
     } catch (err) {
