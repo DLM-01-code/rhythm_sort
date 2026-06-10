@@ -17,12 +17,13 @@ let idCounter = 0;
 const nextId = () => `t_${Date.now()}_${idCounter++}`;
 const isBrowser = typeof window !== 'undefined';
 
+// ✅ Синхронизировано с main.cjs AUDIO_EXTS
 const AUDIO_EXTS = new Set([
   "mp3", "wav", "flac", "aac", "ogg", "m4a", "m4b", "m4r", "m4p",
   "mp4", "mpeg", "mpga", "mp2", "mpa", "opus", "wma", "wmv",
   "aiff", "aif", "aifc", "caf", "alac", "ape", "dsf", "dff",
-  "dvf", "gsm", "ircam", "m3u", "mka", "mlp", "ra", "rm",
-  "snd", "tak", "tta", "voc", "vox", "wv", "m4v", "mkv", "mov", "3gp", "webm"
+  "dvf", "gsm", "ircam", "m3u", "m4r", "mka", "mlp", "ra", "rm",
+  "snd", "tak", "tta", "voc", "vox", "wv"
 ]);
 
 const SKIP_FILES = new Set([

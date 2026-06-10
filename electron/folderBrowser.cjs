@@ -1071,12 +1071,10 @@ function createFolderBrowser(startPathOverride) {
       watchCurrentDir(dirPath);
     };
 
-    // startPathOverride передаётся из main процесса через атрибут окна
-    const __startOverride = window.__startPathOverride || '';
-
     window.onload = async () => {
       await loadDrives();
-      let startPath = __startOverride;
+      // ✅ Приоритет: 1) startPath от вызывающей стороны, 2) последняя папка, 3) Desktop
+      let startPath = window.__RS_START_PATH__ || '';
       if (!startPath) {
         try { startPath = localStorage.getItem('folder-browser-last-path') || ''; } catch {}
       }
@@ -1093,16 +1091,16 @@ function createFolderBrowser(startPathOverride) {
 
   browserWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`);
 
-  // Inject startPathOverride before page scripts run
-  if (startPathOverride) {
-    browserWindow.webContents.once('did-finish-load', () => {
-      const escaped = startPathOverride.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+  // ✅ Инжектируем startPath сразу после загрузки DOM — до window.onload
+  browserWindow.webContents.once('dom-ready', () => {
+    if (startPathOverride) {
+      const escaped = JSON.stringify(startPathOverride);
       browserWindow.webContents.executeJavaScript(
-        `window.__startPathOverride = '${escaped}';`
+        `window.__RS_START_PATH__ = ${escaped};`
       ).catch(() => {});
-    });
-  }
-  
+    }
+  });
+
   browserWindow.once('ready-to-show', () => {
     browserWindow.show();
   });

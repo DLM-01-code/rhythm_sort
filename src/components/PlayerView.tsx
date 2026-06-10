@@ -166,10 +166,12 @@ export function PlayerView() {
               addProcessedPath(currentTrack.path);
               setStatus(currentTrack.id, "accepted");
               toast.success(`✅ Sent to ${binding.folderName}`);
-              setTimeout(() => {
-                const { tracks, currentIndex } = usePlayer.getState();
-                if (currentIndex < tracks.length - 1) next();
-              }, 100);
+              if (useSplitStore.getState().splitAutoNext) {
+                setTimeout(() => {
+                  const { tracks, currentIndex } = usePlayer.getState();
+                  if (currentIndex < tracks.length - 1) next();
+                }, 100);
+              }
             } else {
               throw new Error(result.error || "Failed to send track");
             }
