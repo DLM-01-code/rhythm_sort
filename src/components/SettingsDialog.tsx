@@ -98,16 +98,18 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
         </DialogHeader>
 
         <Tabs defaultValue="general" className="mt-4">
-          <TabsList className="grid w-full grid-cols-5 bg-muted">
+          <TabsList className="grid w-full grid-cols-4 bg-muted">
             <TabsTrigger value="general" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
               General
             </TabsTrigger>
             <TabsTrigger value="audio" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
               Audio
             </TabsTrigger>
+            {/* METADATA TAB - ЗАКОММЕНТИРОВАН
             <TabsTrigger value="metadata" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
               Metadata
             </TabsTrigger>
+            */}
             <TabsTrigger value="visualizer" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
               Visualizer
             </TabsTrigger>
@@ -147,7 +149,6 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                     <SelectTrigger className="w-32 bg-background border-border">
                       <SelectValue />
                     </SelectTrigger>
-                    {/* ✅ FIX 4 */}
                     <SelectContent className={SELECT_CONTENT_CLASS}>
                       <SelectItem value="copy">Copy</SelectItem>
                       <SelectItem value="move">Move</SelectItem>
@@ -184,7 +185,6 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                     <SelectTrigger className="w-40 bg-background border-border">
                       <SelectValue />
                     </SelectTrigger>
-                    {/* ✅ FIX 4 */}
                     <SelectContent className={SELECT_CONTENT_CLASS}>
                       <SelectItem value="off">Off</SelectItem>
                       <SelectItem value="onAccept">On Accept</SelectItem>
@@ -252,7 +252,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
             </Card>
           </TabsContent>
 
-          {/* Metadata Tab */}
+          {/* METADATA TAB CONTENT - ЗАКОММЕНТИРОВАН
           <TabsContent value="metadata" className="space-y-4 mt-4">
             <Card className="bg-card border-border">
               <CardHeader>
@@ -334,6 +334,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
               </CardContent>
             </Card>
           </TabsContent>
+          */}
 
           {/* Visualizer Tab */}
           <TabsContent value="visualizer" className="space-y-4 mt-4">
@@ -368,7 +369,6 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                         <SelectTrigger className="w-48 bg-background border-border">
                           <SelectValue />
                         </SelectTrigger>
-                        {/* ✅ FIX 4 */}
                         <SelectContent className={SELECT_CONTENT_CLASS}>
                           <SelectItem value="dual_waveform">🎛️ Dual Waveform</SelectItem>
                           <SelectItem value="rms_meter">📏 RMS Meter</SelectItem>
