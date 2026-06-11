@@ -450,11 +450,15 @@ function createFolderBrowser(startPathOverride) {
     title: 'Select Music Folder'
   });
 
+  const startPathScript = startPathOverride
+    ? '<script>window.__RS_START_PATH__=' + JSON.stringify(startPathOverride) + ';</script>'
+    : '';
   const html = `<!DOCTYPE html>
 <html>
 <head>
   <meta charset="UTF-8">
   <title>Select Music Folder</title>
+  ${startPathScript}
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { 
@@ -1090,16 +1094,6 @@ function createFolderBrowser(startPathOverride) {
 </html>`;
 
   browserWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`);
-
-  // ✅ Инжектируем startPath сразу после загрузки DOM — до window.onload
-  browserWindow.webContents.once('dom-ready', () => {
-    if (startPathOverride) {
-      const escaped = JSON.stringify(startPathOverride);
-      browserWindow.webContents.executeJavaScript(
-        `window.__RS_START_PATH__ = ${escaped};`
-      ).catch(() => {});
-    }
-  });
 
   browserWindow.once('ready-to-show', () => {
     browserWindow.show();
