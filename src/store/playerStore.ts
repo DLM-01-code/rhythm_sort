@@ -11,6 +11,13 @@ export interface Track extends AudioFileEntry {
   cover?: string;
 }
 
+interface LoadingState {
+  [trackId: string]: {
+    timeoutId: NodeJS.Timeout;
+    retryCount: number;
+  };
+}
+
 interface PlayerState {
   tracks: Track[];
   brokenTracks: Track[];
@@ -21,6 +28,7 @@ interface PlayerState {
   volume: number;
   sourceFolder: string | null;
   processedPaths: string[];
+  loadingTimeouts: LoadingState;
 
   setTracks: (tracks: Track[], sourceFolder: string | null) => void;
   setBrokenTracks: (tracks: Track[]) => void;
@@ -43,7 +51,8 @@ interface PlayerState {
   markCurrentAsPlayed: () => void;
   renameTrack: (id: string, newName: string) => Promise<boolean>;
   setTrackCover: (id: string, cover: string | undefined) => Promise<boolean>;
-  // Сохранение сессии
+  setTrackLoading: (trackId: string, isLoading: boolean) => void;
+  clearAllLoadingTimeouts: () => void;
   saveSession: () => void;
   hasSession: () => boolean;
   clearSession: () => void;
@@ -61,6 +70,7 @@ export const usePlayer = create<PlayerState>()(
       volume: 0.85,
       sourceFolder: null,
       processedPaths: [],
+      loadingTimeouts: {},
 
       setTracks: (tracks, sourceFolder) => {
         const { isPathProcessed } = get();
@@ -71,9 +81,11 @@ export const usePlayer = create<PlayerState>()(
       },
 
       setBrokenTracks: (tracks) => set({ brokenTracks: tracks }),
+      
       clearBrokenTracks: () => set({ brokenTracks: [] }),
 
       addBrokenTrack: (track) => set((s) => {
+        // Проверяем, не добавляли ли этот трек в битые
         const alreadyExists = s.brokenTracks.some(t => t.id === track.id);
         if (!alreadyExists) {
           const brokenTrack: Track = {
@@ -83,6 +95,7 @@ export const usePlayer = create<PlayerState>()(
           const newTracks = s.tracks.map((t) =>
             t.id === track.id ? { ...t, status: "error" as TrackStatus } : t
           );
+          console.log(`❌ Added broken track: ${track.name}`);
           return { brokenTracks: [...s.brokenTracks, brokenTrack], tracks: newTracks };
         }
         return s;
@@ -201,7 +214,58 @@ export const usePlayer = create<PlayerState>()(
         } catch { return false; }
       },
 
-      // ✅ Сохранение сессии — запоминает текущую папку + индекс + статусы
+      // Управление таймаутами загрузки треков (предотвращает ложные битые)
+      setTrackLoading: (trackId: string, isLoading: boolean) => {
+        const { loadingTimeouts } = get();
+        
+        if (isLoading) {
+          // Очищаем предыдущий таймаут для этого трека
+          if (loadingTimeouts[trackId]) {
+            clearTimeout(loadingTimeouts[trackId].timeoutId);
+          }
+          
+          // Устанавливаем новый таймаут - 3 секунды на загрузку
+          const timeoutId = setTimeout(() => {
+            const { tracks, addBrokenTrack } = get();
+            const track = tracks.find(t => t.id === trackId);
+            if (track && track.status === "pending" && !track.url) {
+              console.log(`⚠️ Track loading timeout: ${track.name}`);
+              addBrokenTrack({ id: trackId, name: track.name, path: track.path });
+            }
+            set((s) => {
+              const newTimeouts = { ...s.loadingTimeouts };
+              delete newTimeouts[trackId];
+              return { loadingTimeouts: newTimeouts };
+            });
+          }, 3000);
+          
+          set((s) => ({
+            loadingTimeouts: {
+              ...s.loadingTimeouts,
+              [trackId]: { timeoutId, retryCount: 0 }
+            }
+          }));
+        } else {
+          // Загрузка завершена успешно - очищаем таймаут
+          if (loadingTimeouts[trackId]) {
+            clearTimeout(loadingTimeouts[trackId].timeoutId);
+            set((s) => {
+              const newTimeouts = { ...s.loadingTimeouts };
+              delete newTimeouts[trackId];
+              return { loadingTimeouts: newTimeouts };
+            });
+          }
+        }
+      },
+
+      clearAllLoadingTimeouts: () => {
+        const { loadingTimeouts } = get();
+        Object.values(loadingTimeouts).forEach(({ timeoutId }) => {
+          clearTimeout(timeoutId);
+        });
+        set({ loadingTimeouts: {} });
+      },
+
       saveSession: () => {
         const { tracks, currentIndex, sourceFolder, processedPaths } = get();
         if (!sourceFolder || tracks.length === 0) return;
@@ -239,12 +303,12 @@ export const usePlayer = create<PlayerState>()(
 
       reset: () => {
         get().clearSession();
+        get().clearAllLoadingTimeouts();
         set({ tracks: [], currentIndex: 0, sourceFolder: null, processedPaths: [], brokenTracks: [] });
       },
     }),
     {
       name: 'rhythm-sort-player',
-      // Сохраняем только то что нужно между сессиями
       partialize: (state) => ({
         volume: state.volume,
         processedPaths: state.processedPaths,

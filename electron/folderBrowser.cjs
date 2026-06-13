@@ -11,10 +11,23 @@ let resolvePromise = null;
 let handlersRegistered = false;
 const dirWatchers = new Map();
 
-// Глобальный кэш всех когда-либо просмотренных папок
+// Глобальный кэш
 const globalCache = new Map();
 const scanningQueue = new Set();
 let isBackgroundScanning = false;
+
+// Ключи для сохранения разных режимов
+const STORAGE_KEYS = {
+  source: 'folder-browser-last-path-source',
+  target: 'folder-browser-last-path-target',
+  split: 'folder-browser-last-path-split'
+};
+
+let currentMode = 'source';
+
+function getStorageKey(mode) {
+  return STORAGE_KEYS[mode] || STORAGE_KEYS.source;
+}
 
 // Системные пути для предзагрузки
 const SYSTEM_PATHS = [
@@ -74,28 +87,20 @@ async function getDrives() {
   return drives;
 }
 
-// Быстрое сканирование папки (синхронное для скорости)
+// Сканирование папки - ТОЛЬКО ПАПКИ
 async function scanDirectoryFast(dirPath) {
   if (globalCache.has(dirPath)) {
-    console.log('⚡ INSTANT from cache:', dirPath);
     return globalCache.get(dirPath);
   }
-  
-  console.log('🔍 First-time scan (will cache):', dirPath);
   
   try {
     const entries = await fs.readdir(dirPath, { withFileTypes: true });
     const items = [];
-    
     const skipFiles = new Set(['Thumbs.db', '.DS_Store', 'desktop.ini', '._.DS_Store', '.localized']);
-    const audioExts = new Set(['mp3', 'wav', 'flac', 'aac', 'ogg', 'm4a', 'mp4', 'opus', 'wma']);
-    
-    const promises = [];
     
     for (const entry of entries) {
       if (skipFiles.has(entry.name)) continue;
       if (entry.name.startsWith('._')) continue;
-      if (entry.name.startsWith('.')) continue;
       
       const fullPath = path.join(dirPath, entry.name);
       
@@ -104,8 +109,6 @@ async function scanDirectoryFast(dirPath) {
           name: entry.name,
           path: fullPath,
           isDirectory: true,
-          isShortcut: false,
-          isAudio: false,
           size: 0
         });
         
@@ -113,51 +116,11 @@ async function scanDirectoryFast(dirPath) {
           scanningQueue.add(fullPath);
           setTimeout(() => preloadFolderInBackground(fullPath), 100);
         }
-        continue;
-      }
-      
-      const ext = entry.name.split('.').pop()?.toLowerCase() || '';
-      const isAudio = audioExts.has(ext);
-      const isShortcut = entry.name.toLowerCase().endsWith('.lnk');
-      
-      if (isShortcut) {
-        promises.push(resolveShortcut(fullPath).then(targetPath => {
-          if (targetPath) {
-            items.push({
-              name: entry.name.replace(/\.lnk$/i, ''),
-              path: targetPath,
-              isDirectory: true,
-              isShortcut: true,
-              isAudio: false,
-              size: 0
-            });
-          }
-        }));
-        continue;
-      }
-      
-      if (isAudio) {
-        items.push({
-          name: entry.name,
-          path: fullPath,
-          isDirectory: false,
-          isShortcut: false,
-          isAudio: true,
-          size: 0
-        });
       }
     }
     
-    await Promise.all(promises);
-    
-    items.sort((a, b) => {
-      if (a.isDirectory && !b.isDirectory) return -1;
-      if (!a.isDirectory && b.isDirectory) return 1;
-      return a.name.localeCompare(b.name);
-    });
-    
+    items.sort((a, b) => a.name.localeCompare(b.name));
     globalCache.set(dirPath, items);
-    
     return items;
   } catch (error) {
     console.error('Error scanning directory:', error);
@@ -171,13 +134,10 @@ async function preloadFolderInBackground(folderPath) {
     return;
   }
   
-  console.log('🔄 BACKGROUND preloading:', folderPath);
-  
   try {
     const entries = await fs.readdir(folderPath, { withFileTypes: true });
     const items = [];
     const skipFiles = new Set(['Thumbs.db', '.DS_Store', 'desktop.ini']);
-    const audioExts = new Set(['mp3', 'wav', 'flac', 'aac', 'ogg', 'm4a', 'mp4', 'opus', 'wma']);
     
     for (const entry of entries) {
       if (skipFiles.has(entry.name)) continue;
@@ -190,58 +150,21 @@ async function preloadFolderInBackground(folderPath) {
           name: entry.name,
           path: fullPath,
           isDirectory: true,
-          isShortcut: false,
-          isAudio: false,
-          size: 0
-        });
-        continue;
-      }
-      
-      const ext = entry.name.split('.').pop()?.toLowerCase() || '';
-      const isAudio = audioExts.has(ext);
-      const isShortcut = entry.name.toLowerCase().endsWith('.lnk');
-      
-      if (isShortcut) {
-        const targetPath = await resolveShortcut(fullPath);
-        if (targetPath) {
-          items.push({
-            name: entry.name.replace(/\.lnk$/i, ''),
-            path: targetPath,
-            isDirectory: true,
-            isShortcut: true,
-            isAudio: false,
-            size: 0
-          });
-        }
-      } else if (isAudio) {
-        items.push({
-          name: entry.name,
-          path: fullPath,
-          isDirectory: false,
-          isShortcut: false,
-          isAudio: true,
           size: 0
         });
       }
     }
     
-    items.sort((a, b) => {
-      if (a.isDirectory && !b.isDirectory) return -1;
-      if (!a.isDirectory && b.isDirectory) return 1;
-      return a.name.localeCompare(b.name);
-    });
-    
+    items.sort((a, b) => a.name.localeCompare(b.name));
     globalCache.set(folderPath, items);
-    console.log('✅ BACKGROUND cached:', folderPath, `(${items.length} items)`);
     
-    const subfolders = items.filter(i => i.isDirectory).slice(0, 3);
+    const subfolders = items.slice(0, 3);
     for (const sub of subfolders) {
       if (!globalCache.has(sub.path) && !scanningQueue.has(sub.path)) {
         scanningQueue.add(sub.path);
         setTimeout(() => preloadFolderInBackground(sub.path), 500);
       }
     }
-    
   } catch (error) {
     console.error('Background preload failed:', folderPath, error);
   } finally {
@@ -253,8 +176,6 @@ async function startBackgroundPreload() {
   if (isBackgroundScanning) return;
   isBackgroundScanning = true;
   
-  console.log('🚀 Starting background filesystem preload...');
-  
   for (const sysPath of SYSTEM_PATHS) {
     if (sysPath && !globalCache.has(sysPath) && !scanningQueue.has(sysPath)) {
       try {
@@ -265,12 +186,9 @@ async function startBackgroundPreload() {
       } catch(e) {}
     }
   }
-  
-  console.log('✅ Background preload complete. Cached:', globalCache.size, 'folders');
 }
 
 async function preloadFileSystem() {
-  console.log('📁 Preloading file system in background...');
   await startBackgroundPreload();
 }
 
@@ -309,16 +227,13 @@ async function deleteFolder(folderPath) {
     await scanDirectoryFast(parentPath);
     return { success: true };
   } catch (error) {
-    console.error('Error deleting folder:', error);
     return { success: false, error: error.message };
   }
 }
 
 async function trashFolder(folderPath) {
   try {
-    // Экранируем путь для PowerShell
     const escapedPath = folderPath.replace(/\\/g, '\\\\').replace(/'/g, "''");
-    // Пишем скрипт во временный файл чтобы избежать проблем с экранированием в командной строке
     const tmpScript = path.join(os.tmpdir(), 'rs_trash_' + Date.now() + '.ps1');
     const scriptContent = `Add-Type -AssemblyName Microsoft.VisualBasic\r\n[Microsoft.VisualBasic.FileIO.FileSystem]::DeleteDirectory('${escapedPath}', 'OnlyErrorDialogs', 'SendToRecycleBin')`;
     const fss = require('fs');
@@ -331,7 +246,6 @@ async function trashFolder(folderPath) {
     const freshItems = await scanDirectoryFast(parentPath);
     return { success: true, items: freshItems };
   } catch (error) {
-    console.error('Error trashing folder:', error);
     return { success: false, error: error.message };
   }
 }
@@ -423,8 +337,11 @@ function registerHandlers() {
   setTimeout(() => startBackgroundPreload(), 1000);
 }
 
-function createFolderBrowser(startPathOverride) {
+function createFolderBrowser(startPathOverride, mode = 'source') {
   registerHandlers();
+  
+  currentMode = mode;
+  console.log(`📁 Creating folder browser for mode: ${mode}`);
   
   if (browserWindow) {
     browserWindow.focus();
@@ -434,6 +351,11 @@ function createFolderBrowser(startPathOverride) {
   }
 
   const parentWindow = BrowserWindow.getFocusedWindow();
+  
+  let windowTitle = '';
+  if (mode === 'source') windowTitle = 'Select Source Folder';
+  else if (mode === 'target') windowTitle = 'Select Target Folder';
+  else windowTitle = 'Select Split Folder';
   
   browserWindow = new BrowserWindow({
     width: 850,
@@ -447,18 +369,17 @@ function createFolderBrowser(startPathOverride) {
       nodeIntegration: true,
       contextIsolation: false
     },
-    title: 'Select Music Folder'
+    title: windowTitle
   });
 
-  const startPathScript = startPathOverride
-    ? '<script>window.__RS_START_PATH__=' + JSON.stringify(startPathOverride) + ';</script>'
-    : '';
+  // Открываем DevTools для отладки
+  browserWindow.webContents.openDevTools();
+
   const html = `<!DOCTYPE html>
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>Select Music Folder</title>
-  ${startPathScript}
+  <title>${windowTitle}</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { 
@@ -537,8 +458,6 @@ function createFolderBrowser(startPathOverride) {
     }
     .item:hover { background: #313244; }
     .item.selected { background: #89b4fa; color: #1e1e2e; }
-    .item.disabled { opacity: 0.5; cursor: default; }
-    .item.disabled:hover { background: none; }
     .icon { font-size: 18px; width: 28px; }
     .name { flex: 1; font-size: 13px; word-break: break-word; }
     .info { font-size: 10px; color: #a6adc8; }
@@ -641,7 +560,7 @@ function createFolderBrowser(startPathOverride) {
   </style>
 </head>
 <body>
-  <div class="title-bar">📁 Select Music Folder</div>
+  <div class="title-bar">📁 ${windowTitle}</div>
   <div class="toolbar">
     <select id="driveSelect">
       <option value="">📁 Select drive or folder...</option>
@@ -650,7 +569,6 @@ function createFolderBrowser(startPathOverride) {
     <div class="action-btn" id="desktopBtn">🖥️ Desktop</div>
     <div class="action-btn" id="newFolderBtn">📁 New Folder</div>
     <div class="action-btn" id="refreshBtn">🔄 Refresh</div>
-    <div class="action-btn" id="trashModeBtn">♻️ Trash</div>
   </div>
   <div class="path-bar" id="currentPath">/</div>
   <div class="stats" id="stats">📁 Loading...</div>
@@ -663,6 +581,18 @@ function createFolderBrowser(startPathOverride) {
   <script>
     const { ipcRenderer } = require('electron');
     const os = require('os');
+    
+    const mode = '${mode}';
+    const STORAGE_KEYS = {
+      source: 'folder-browser-last-path-source',
+      target: 'folder-browser-last-path-target',
+      split: 'folder-browser-last-path-split'
+    };
+    
+    function getStorageKey() {
+      return STORAGE_KEYS[mode] || STORAGE_KEYS.source;
+    }
+    
     let currentPath = '';
     let items = [];
     let selectedPath = '';
@@ -732,7 +662,7 @@ function createFolderBrowser(startPathOverride) {
     function getUniqueFolderName(baseName) {
       let counter = 1;
       let newName = baseName;
-      const existingNames = items.filter(i => i.isDirectory).map(i => i.name);
+      const existingNames = items.map(i => i.name);
       
       while (existingNames.includes(newName)) {
         counter++;
@@ -754,9 +684,8 @@ function createFolderBrowser(startPathOverride) {
     }
     
     function updateStats() {
-      const folders = items.filter(i => i.isDirectory).length;
-      const audioFiles = items.filter(i => i.isAudio).length;
-      document.getElementById('stats').innerHTML = \`📁 Folders: \${folders}  |  🎵 Audio: \${audioFiles}\`;
+      const folders = items.length;
+      document.getElementById('stats').innerHTML = \`📁 Folders: \${folders}\`;
     }
     
     function createFolderElement(folder) {
@@ -764,12 +693,10 @@ function createFolderBrowser(startPathOverride) {
       div.className = 'item';
       if (selectedPath === folder.path) div.classList.add('selected');
       
-      const icon = folder.isShortcut ? '🔗' : '📁';
-      const info = folder.isShortcut ? 'Shortcut' : 'Folder';
       div.innerHTML = \`
-        <div class="icon">\${icon}</div>
+        <div class="icon">📁</div>
         <div class="name">\${escapeHtml(folder.name)}</div>
-        <div class="info">\${info}</div>
+        <div class="info">Folder</div>
       \`;
       
       div.setAttribute('data-path', folder.path);
@@ -850,12 +777,32 @@ function createFolderBrowser(startPathOverride) {
       }
     }
     
+    function renderItems() {
+      const container = document.getElementById('content');
+      if (items.length === 0) {
+        container.innerHTML = '<div class="empty">📁 Folder is empty</div>';
+        return;
+      }
+      
+      container.innerHTML = '';
+      
+      for (const item of items) {
+        const div = createFolderElement(item);
+        if (div) container.appendChild(div);
+      }
+    }
+    
     async function loadDirectory(dirPath) {
       if (!dirPath || isLoading) return;
       isLoading = true;
       currentPath = dirPath;
-      // ✅ Запоминаем последнюю папку
-      try { localStorage.setItem('folder-browser-last-path', dirPath); } catch {}
+      
+      // Сохраняем последнюю просмотренную папку для этого режима
+      try { 
+        localStorage.setItem(getStorageKey(), dirPath);
+        console.log(\`💾 Saved \${mode} path: \${dirPath}\`);
+      } catch(e) { console.error('Failed to save:', e); }
+      
       let displayPath = dirPath;
       const desktopPath = os.homedir() + '\\\\Desktop';
       if (dirPath === desktopPath) {
@@ -892,21 +839,13 @@ function createFolderBrowser(startPathOverride) {
             name: folderName,
             path: result.path,
             isDirectory: true,
-            isShortcut: false,
-            isAudio: false,
             size: 0
           };
           
           items.push(newFolder);
-          items.sort((a, b) => {
-            if (a.isDirectory && !b.isDirectory) return -1;
-            if (!a.isDirectory && b.isDirectory) return 1;
-            return a.name.localeCompare(b.name);
-          });
+          items.sort((a, b) => a.name.localeCompare(b.name));
           
-          const container = document.getElementById('content');
-          const div = createFolderElement(newFolder);
-          container.appendChild(div);
+          renderItems();
           updateStats();
           selectedPath = result.path;
           highlightSelectedFolder();
@@ -920,7 +859,7 @@ function createFolderBrowser(startPathOverride) {
       showModal('Rename Folder', currentName, async (newName) => {
         if (newName === currentName) return;
         
-        const exists = items.some(i => i.isDirectory && i.name === newName && i.path !== itemPath);
+        const exists = items.some(i => i.name === newName && i.path !== itemPath);
         if (exists) {
           alert('A folder with this name already exists!');
           return;
@@ -932,13 +871,7 @@ function createFolderBrowser(startPathOverride) {
           if (itemIndex !== -1) {
             items[itemIndex].name = newName;
             items[itemIndex].path = result.newPath;
-            
-            const div = document.querySelector(\`.item[data-path="\${itemPath}"]\`);
-            if (div) {
-              const nameSpan = div.querySelector('.name');
-              if (nameSpan) nameSpan.textContent = newName;
-              div.setAttribute('data-path', result.newPath);
-            }
+            renderItems();
             
             if (selectedPath === itemPath) {
               selectedPath = result.newPath;
@@ -958,8 +891,7 @@ function createFolderBrowser(startPathOverride) {
           const itemIndex = items.findIndex(i => i.path === itemPath);
           if (itemIndex !== -1) {
             items.splice(itemIndex, 1);
-            const div = document.querySelector(\`.item[data-path="\${itemPath}"]\`);
-            if (div) div.remove();
+            renderItems();
             updateStats();
             
             if (selectedPath === itemPath) {
@@ -981,28 +913,6 @@ function createFolderBrowser(startPathOverride) {
       let result = parts.join('\\\\');
       if (result.length === 2 && result[1] === ':') result += '\\\\';
       return result;
-    }
-    
-    function renderItems() {
-      const container = document.getElementById('content');
-      if (items.length === 0) {
-        container.innerHTML = '<div class="empty">📁 Folder is empty</div>';
-        return;
-      }
-      
-      container.innerHTML = '';
-      
-      for (const item of items) {
-        if (item.isDirectory) {
-          const div = createFolderElement(item);
-          container.appendChild(div);
-        } else if (item.isAudio) {
-          const div = document.createElement('div');
-          div.className = 'item disabled';
-          div.innerHTML = '<div class="icon">🎵</div><div class="name">' + escapeHtml(item.name) + '</div><div class="info"></div>';
-          container.appendChild(div);
-        }
-      }
     }
     
     function escapeHtml(text) {
@@ -1037,9 +947,18 @@ function createFolderBrowser(startPathOverride) {
       createNewFolder();
     };
     
+    document.getElementById('refreshBtn').onclick = async () => {
+      await ipcRenderer.invoke('folder-browser:scan-fresh', currentPath);
+      loadDirectory(currentPath);
+    };
+    
     document.getElementById('selectBtn').onclick = () => {
       const folderToSelect = selectedPath || currentPath;
       if (folderToSelect && folderToSelect !== '/' && folderToSelect !== '') {
+        try { 
+          localStorage.setItem(getStorageKey(), folderToSelect);
+          console.log(\`💾 Selected and saved \${mode} path: \${folderToSelect}\`);
+        } catch(e) { console.error('Failed to save selected:', e); }
         ipcRenderer.send('folder-browser:select', folderToSelect);
       } else {
         alert('Select a folder');
@@ -1077,16 +996,17 @@ function createFolderBrowser(startPathOverride) {
 
     window.onload = async () => {
       await loadDrives();
-      // ✅ Приоритет: 1) startPath от вызывающей стороны, 2) последняя папка, 3) Desktop
-      let startPath = window.__RS_START_PATH__ || '';
-      if (!startPath) {
-        try { startPath = localStorage.getItem('folder-browser-last-path') || ''; } catch {}
-      }
+      
+      // Загружаем сохранённую папку для текущего режима
+      let startPath = '';
+      try { 
+        startPath = localStorage.getItem(getStorageKey()) || '';
+        console.log(\`📂 Loaded \${mode} path from localStorage: \${startPath}\`);
+      } catch(e) { console.error('Failed to load:', e); }
+      
       if (!startPath) startPath = os.homedir() + '\\\\Desktop';
-      try {
-        const fsCheck = require('fs');
-        if (!fsCheck.existsSync(startPath)) startPath = os.homedir() + '\\\\Desktop';
-      } catch {}
+      
+      console.log(\`📍 Starting \${mode} mode with path:\`, startPath);
       loadDirectory(startPath);
     };
   </script>

@@ -3,7 +3,7 @@ const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('electronAPI', {
   // Folder selection
   selectFolder: () => ipcRenderer.invoke('dialog:selectFolder'),
-  selectFolderWithPreview: (startPath) => ipcRenderer.invoke('dialog:selectFolderWithPreview', startPath),
+  selectFolderWithPreview: (startPath, mode) => ipcRenderer.invoke('dialog:selectFolderWithPreview', startPath, mode),
   selectFiles: () => ipcRenderer.invoke('dialog:selectFiles'),
 
   // File system operations
@@ -24,15 +24,15 @@ contextBridge.exposeInMainWorld('electronAPI', {
   updateCover: (filePath, coverBase64) => ipcRenderer.invoke('fs:updateCover', filePath, coverBase64),
   updateCoverOnAccept: (targetFolder, fileName, coverBase64) => ipcRenderer.invoke('fs:updateCoverOnAccept', targetFolder, fileName, coverBase64),
 
-  // ✅ Полные теги
+  // Полные теги
   readFullTags: (filePath) => ipcRenderer.invoke('fs:readFullTags', filePath),
   writeFullTags: (filePath, tagData) => ipcRenderer.invoke('fs:writeFullTags', filePath, tagData),
 
-  // ✅ BPM / Key анализ
+  // BPM / Key анализ
   analyzeBpm: (filePath) => ipcRenderer.invoke('fs:analyzeBpm', filePath),
   analyzeKey: (filePath) => ipcRenderer.invoke('fs:analyzeKey', filePath),
 
-  // ✅ Пакетное переименование
+  // Пакетное переименование
   batchRename: (filePath, template) => ipcRenderer.invoke('fs:batchRename', filePath, template),
 
   // Broken files

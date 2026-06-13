@@ -17,7 +17,7 @@ let idCounter = 0;
 const nextId = () => `t_${Date.now()}_${idCounter++}`;
 const isBrowser = typeof window !== 'undefined';
 
-// ✅ Синхронизировано с main.cjs AUDIO_EXTS
+// Синхронизировано с main.cjs AUDIO_EXTS
 const AUDIO_EXTS = new Set([
   "mp3", "wav", "flac", "aac", "ogg", "m4a", "m4b", "m4r", "m4p",
   "mp4", "mpeg", "mpga", "mp2", "mpa", "opus", "wma", "wmv",
@@ -75,7 +75,7 @@ export function Toolbar({ onOpenSettings }: { onOpenSettings: () => void }) {
     try {
       const api = isBrowser ? window.electronAPI : null;
       if (api) {
-        const folder = await api.selectFolderWithPreview(sourceFolder || undefined);
+        const folder = await api.selectFolderWithPreview(sourceFolder || undefined, 'source');
         if (!folder) return;
         if (isSameFolder(folder, targetFolder)) {
           toast.error("Source folder cannot be the same as Target folder!");
@@ -121,12 +121,12 @@ export function Toolbar({ onOpenSettings }: { onOpenSettings: () => void }) {
     } finally {
       setScanning(false);
     }
-  }, [clearProcessed, targetFolder, clearBrokenTracks, scanning, autoPlayAfterLoad, setTracks]);
+  }, [clearProcessed, targetFolder, clearBrokenTracks, scanning, autoPlayAfterLoad, setTracks, sourceFolder]);
 
   const pickTargetFolder = useCallback(async () => {
     const api = isBrowser ? window.electronAPI : null;
     if (api) {
-      const folder = await api.selectFolderWithPreview(targetFolder || undefined);
+      const folder = await api.selectFolderWithPreview(targetFolder || undefined, 'target');
       if (folder) {
         if (isSameFolder(folder, sourceFolder)) {
           toast.error("Target folder cannot be the same as Source folder!");
@@ -143,7 +143,7 @@ export function Toolbar({ onOpenSettings }: { onOpenSettings: () => void }) {
     } else {
       toast.info("Folder picking requires the desktop app");
     }
-  }, [set, sourceFolder]);
+  }, [set, sourceFolder, targetFolder]);
 
   const handleToggleSplitMode = () => {
     const newMode = !isSplitMode;
@@ -161,7 +161,6 @@ export function Toolbar({ onOpenSettings }: { onOpenSettings: () => void }) {
     toast.info(autoPlayNext ? "Auto-play OFF" : "Auto-play ON");
   };
 
-  // ✅ Переключалка Copy/Move
   const handleToggleAcceptMode = () => {
     const newMode = acceptMode === "copy" ? "move" : "copy";
     set("acceptMode", newMode);
@@ -217,7 +216,6 @@ export function Toolbar({ onOpenSettings }: { onOpenSettings: () => void }) {
               Reset All
             </Button>
 
-            {/* ✅ Accept Mode Toggle: C = Copy, M = Move */}
             <Button
               size="sm"
               variant={acceptMode === "move" ? "default" : "secondary"}
@@ -229,7 +227,6 @@ export function Toolbar({ onOpenSettings }: { onOpenSettings: () => void }) {
               {acceptMode === "move" ? "M" : "C"}
             </Button>
 
-            {/* Auto-play Toggle */}
             <Button
               size="sm"
               variant={autoPlayNext ? "default" : "secondary"}
@@ -240,7 +237,6 @@ export function Toolbar({ onOpenSettings }: { onOpenSettings: () => void }) {
               <SkipForward className="w-4 h-4" />
             </Button>
 
-            {/* Visualizer Toggle */}
             <Button
               size="sm"
               variant={vizEnabled ? "default" : "secondary"}

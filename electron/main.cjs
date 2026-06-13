@@ -47,10 +47,8 @@ function createWindow() {
       mainWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(`<h1>Error: ${err.message}</h1>`)}`);
     });
   } else {
-    // Production build - правильные пути
     let indexPath = "";
     
-    // Пробуем разные возможные пути
     const possiblePaths = [
       path.join(__dirname, "../dist/index.html"),
       path.join(process.resourcesPath, "dist/index.html"),
@@ -137,11 +135,11 @@ function registerIpcHandlers() {
     return r.filePaths[0];
   });
 
-  ipcMain.handle("dialog:selectFolderWithPreview", async () => {
-    console.log('📁 Custom folder browser with preview called');
+  ipcMain.handle("dialog:selectFolderWithPreview", async (event, startPath, mode = 'source') => {
+    console.log('📁 Custom folder browser called for mode:', mode, 'startPath:', startPath);
     try {
       const { createFolderBrowser } = await import('./folderBrowser.cjs');
-      const selectedFolder = await createFolderBrowser();
+      const selectedFolder = await createFolderBrowser(startPath, mode);
       console.log('📁 Selected folder:', selectedFolder);
       return selectedFolder;
     } catch (err) {
@@ -407,7 +405,6 @@ function registerIpcHandlers() {
       const ext = path.extname(file).slice(1).toLowerCase();
       const fileName = path.basename(file);
 
-      // ✅ Пропускаем всё что не аудио (.txt, .jpg, .ini и т.д.)
       if (!ext || !AUDIO_EXTS.has(ext)) {
         console.log(`⏭️ Skipping non-audio: ${fileName}`);
         continue;
@@ -494,3 +491,5 @@ function registerIpcHandlers() {
     return { ok: true };
   });
 }
+
+module.exports = { registerIpcHandlers };

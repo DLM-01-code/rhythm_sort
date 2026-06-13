@@ -112,7 +112,7 @@ export function SplitPanel() {
   const handleAddFolder = async () => {
     const api = window.electronAPI;
     if (!api) return;
-    const fp = await api.selectFolderWithPreview();
+    const fp = await api.selectFolderWithPreview(undefined, 'split');
     if (!fp) return;
     const fn = fp.split(/[/\\]/).pop() || fp;
     startBindingMode(fp, fn);
@@ -202,7 +202,6 @@ export function SplitPanel() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-xs font-bold text-primary leading-tight">Key: {b.keyDisplay}</p>
-                        {/* Показываем полный путь */}
                         <p className="text-[10px] text-muted-foreground break-all leading-tight mt-0.5">
                           {b.folderPath}
                         </p>
@@ -231,7 +230,7 @@ export function SplitPanel() {
           </>
         )}
 
-        {/* ✅ Resize grip */}
+        {/* Resize grip */}
         {!collapsed && (
           <div
             className="absolute bottom-0 right-0 w-5 h-5 cursor-se-resize z-10 flex items-end justify-end pr-0.5 pb-0.5"
