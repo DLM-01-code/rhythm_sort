@@ -8,9 +8,11 @@ Rhythm Sort is a Windows/Mac program that helps you organize large music collect
 
 ## 📦 Installation
 
-1. Download the `.exe` installer file
-2. Run it and click "Next"
+1. Download the `.exe` installer file (Windows) or `.dmg` file (Mac)
+2. Run it and click "Next" (Windows) or drag the app into Applications (Mac)
 3. After installation, open **Rhythm Sort** from your desktop
+
+> **Mac users:** on first launch, macOS may show an "unidentified developer" warning since the app isn't code-signed. Right-click the app and choose **Open** to bypass this — you only need to do it once.
 
 ---
 
@@ -37,7 +39,7 @@ The first track will start playing automatically. From there, it's simple:
 | ⏭ Next Track | `S` |
 | ⏮ Previous Track | `W` |
 
-> All keys can be remapped in Settings.
+> All keys can be remapped in Settings. **Tip:** hold down the seek key (`A`/`D`) to keep rewinding or fast-forwarding continuously instead of pressing it repeatedly.
 
 After each decision, the program automatically moves to the next track.
 
@@ -47,9 +49,9 @@ After each decision, the program automatically moves to the next track.
 
 ### Top Toolbar
 
-**Source Folder** — where your music comes from.
+**Source Folder** — where your music comes from. The app remembers the last folder you opened here, so next time it opens nearby.
 
-**Target Folder** — where accepted tracks are sent.
+**Target Folder** — where accepted tracks are sent. Also remembers your last pick.
 
 **Split** — enables sorting into multiple folders at once.
 
@@ -65,6 +67,8 @@ After each decision, the program automatically moves to the next track.
 
 **⚙️** — open Settings.
 
+You can also drag the whole window by clicking and holding any empty area of the top toolbar.
+
 ### Track Queue (Right Panel)
 Shows all tracks with their statuses:
 
@@ -78,6 +82,12 @@ Shows all tracks with their statuses:
 | ⚠️ Error | File is corrupted, skipped automatically |
 
 Click any track to jump to it. Moved and damaged tracks cannot be clicked.
+
+**🔍 Search box** — type any part of a filename above the queue to instantly filter it down. Clear the search (✗) to see the full queue again. The counter shows how many tracks match.
+
+**⦿ button** — jumps the queue view back to whichever track is currently playing, useful if you've scrolled away searching for something.
+
+**Cover All button** — appears when the current track has a cover image; applies that same cover to every other track in the queue with one click.
 
 ---
 
@@ -123,14 +133,14 @@ Open with the ⚙️ button in the top-right corner.
 - *VU Meter* — classic studio meters
 - *Lissajous* — geometric figures from sound
 - *Wave (Low Profile)* — compact wave, takes little space
-- *Particle Flow* - Particles fly upward with tails, reacting to every frequency
-- *DNA Helix* - Rotating double helix, bridges pulsate under the bass
-- *Ink Drop* - Organic spots that blur and breathe
-- *City Lights* - Thin neon columns with reflections and glowing tops
-- *Neon Ring* - Three concentric rings + particles around the circumference
-- *Mirror Bars* - Mirrored equalizer with a gradient from blue to purple
-- *Plasma* - Five colored blob spots blended via screen blend mode
-- *Oscilloscope* - A green line on a dark grid, like an old oscilloscope
+- *Particle Flow* — particles fly upward with tails, reacting to every frequency
+- *DNA Helix* — rotating double helix, bridges pulsate under the bass
+- *Ink Drop* — organic spots that blur and breathe
+- *City Lights* — thin neon columns with reflections and glowing tops
+- *Neon Ring* — three concentric rings + particles around the circumference
+- *Mirror Bars* — mirrored equalizer with a gradient from blue to purple
+- *Plasma* — glowing colored orbs blending and pulsing with the bass
+- *Oscilloscope* — a green line on a dark grid, like an old oscilloscope
 
 **Sensitivity** — how actively the animation reacts to sound.
 
@@ -160,9 +170,15 @@ Normal mode sends all accepted tracks to one folder. Split Mode is for when you 
 
 Now while listening, press the corresponding number — the track will be sent to that folder.
 
+> If you press a key that's already bound to a different folder, the app will ask whether you want to rebind it to the new folder or cancel.
+
+Each folder binding remembers the last subfolder you opened inside it, separately from every other binding, so navigating back into a deeply nested folder is faster the second time.
+
 ### Managing the Panel
 - **Drag** the panel by its title bar to reposition it
+- **Resize** the panel by dragging its right edge or bottom edge — both width and height can be adjusted, and the size is remembered
 - Click **−** to collapse the panel (Split Mode stays on)
+- The ⏭ button inside the panel toggles auto-advance to the next track after a Split Mode sort, independently of the main toolbar's auto-play setting
 - Hover over a folder and click 🗑️ to remove it
 - **Clear All Bindings** — remove all folders and bindings at once
 
@@ -179,7 +195,7 @@ You can set or replace cover art for any track. It will be written directly into
 3. Drag an image into the window or click to select a file (JPG, PNG up to 5 MB)
 4. Click **Save Cover**
 
-**Apply Cover to All** — A button in the right panel. Click it and the cover will be written to all tracks in the queue at once.
+**Apply Cover to All** — a button in the right panel. Click it and the cover will be written to all tracks in the queue at once.
 
 ---
 
@@ -190,7 +206,28 @@ You can set or replace cover art for any track. It will be written directly into
 3. Enter the new name (the extension like .mp3 will be added automatically)
 4. **Enter** or ✓ — save, **Escape** or ✗ — cancel
 
-The program renames the actual file on disk.
+The program renames the actual file on disk **and** writes the new name into all of the track's text tags (Title, Artist, Album, Year, Genre, Track #, Disc #, Album Artist, Composer, Comment) — so the new name shows up consistently everywhere, not just in the filename.
+
+### Adding or Removing a Prefix / Suffix
+
+Instead of renaming one track at a time, you can attach a short tag of text to the beginning (prefix) or end (suffix) of filenames in bulk:
+
+1. Hover over the track title and click **[P]** (prefix) or **[S]** (suffix)
+2. Type the text you want to add and press Enter (you can stack several pieces of text)
+3. Choose:
+   - **+ Apply to current** — adds it to just the track you're on
+   - **+ Apply to all** — adds it to every track in the queue (skips tracks that already have it)
+   - **− Remove from current** / **− Remove from all** — strips it back off
+
+This is handy for tagging a whole batch with something like a DJ name, edit credit, or a release tag, without renaming every file by hand.
+
+---
+
+## 🎵 Editing Tags Directly
+
+Below the player you can open the **Tags** panel to view and edit Title, Artist, Album, Year, Genre, Track #, BPM, Key, Composer, and Comment for the current track directly, without renaming the file. Press **Save** (or hit Enter in any field) to write your changes into the file.
+
+If BPM/Key analysis is enabled in Settings, an **Analyze** button appears here too — press it to auto-detect BPM and musical key for the current track.
 
 ---
 
@@ -203,10 +240,11 @@ When you choose a folder, the program's own file browser opens. It can do the fo
 | ⬆ Up | Go to parent folder |
 | 🖥️ Desktop | Jump to Desktop |
 | 📁 New Folder | Create a new folder right here |
+| 🔄 Refresh | Refresh the list if you added a folder from outside the app |
 
 - **Single click** — select a folder
 - **Double click** — enter the folder
-- **Right click** — rename or delete the folder
+- **Right click** — rename or delete the folder. Note: deleting permanently removes the folder from your computer — it does **not** go to the Recycle Bin / Trash.
 
 The statistics line shows how many audio files are in the current folder.
 
@@ -214,7 +252,7 @@ The statistics line shows how many audio files are in the current folder.
 
 ## 🔴 Corrupted Files
 
-If a file cannot be played, the program will automatically mark it ⚠️ and move to the next track. Other tracks are not affected.
+If a file cannot be played, the program will automatically mark it ⚠️, drop it into the **Broken Files** list, and move on to the next track. Other tracks are not affected. Open the Broken Files panel to copy the names (one or all at once) or save the full list to a text file for later review.
 
 ---
 
@@ -232,17 +270,19 @@ This allows you to sort large collections over multiple sessions.
 
 **Not sure about a decision?** Press `S` — the track will get a "Played" status and you can return to it later by clicking it in the right panel.
 
-**Large collection?** Use `A` / `D` seek to quickly preview tracks without listening fully. In Settings, you can set the seek step to 5, 10, 15, 20, 25, or 30 seconds.
+**Large collection?** Use `A` / `D` seek to quickly preview tracks without listening fully — hold the key down to keep skimming continuously. In Settings, you can set the seek step to 5, 10, 15, 20, 25, or 30 seconds.
 
 **Sorting by genre?** Turn on Split Mode and bind folders to keys. Much faster than changing the target folder manually every time.
 
 **Worried about your files?** Use **C (Copy)** mode — originals stay in place and nothing is lost if something goes wrong.
 
+**Looking for a specific track?** Use the search box above the queue instead of scrolling through hundreds of files.
+
 ---
 
 ## 🛠️ System Requirements
 
-- **OS:** Windows 10 or Windows 11 / macOS (Universal)
+- **OS:** Windows 10 or Windows 11 / macOS (Universal — works on both Intel and Apple Silicon Macs)
 - **RAM:** 256 MB or more
 - **Disk space:** Approximately 150 MB
 
@@ -281,9 +321,11 @@ Rhythm Sort — это программа для Windows/Mac, которая п�
 
 ## 📦 Установка
 
-1. Скачай файл установщика `.exe`
-2. Запусти его и нажимай «Далее»
+1. Скачай файл установщика `.exe` (Windows) или `.dmg` (Mac)
+2. Запусти его и нажимай «Далее» (Windows) или перетащи приложение в Applications (Mac)
 3. После установки открой **Rhythm Sort** с рабочего стола
+
+> **Для пользователей Mac:** при первом запуске macOS может показать предупреждение «неизвестный разработчик», так как приложение не подписано сертификатом. Кликни правой кнопкой по приложению и выбери **Открыть** — это нужно сделать только один раз.
 
 ---
 
@@ -310,7 +352,8 @@ Rhythm Sort — это программа для Windows/Mac, которая п�
 | ⏭ Следующий трек | `S` |
 | ⏮ Предыдущий трек | `W` |
 
-Клавиши можно переназначать
+> Клавиши можно переназначать в настройках. **Совет:** зажми клавишу перемотки (`A`/`D`), чтобы перематывать непрерывно, а не нажимать её много раз подряд.
+
 После каждого решения программа автоматически переходит к следующему треку.
 
 ---
@@ -319,11 +362,11 @@ Rhythm Sort — это программа для Windows/Mac, которая п�
 
 ### Верхняя панель
 
-**Source Folder** — папка откуда берётся музыка.
+**Source Folder** — папка откуда берётся музыка. Программа запоминает последнюю открытую здесь папку, так что в следующий раз проводник откроется рядом с ней.
 
-**Target Folder** — папка куда отправляются принятые треки.
+**Target Folder** — папка куда отправляются принятые треки. Тоже запоминает последний выбор.
 
-**Split** — кнопка включения режима сортировки по нескольким папкам сразу. 
+**Split** — кнопка включения режима сортировки по нескольким папкам сразу.
 
 **C / M** — переключатель режима принятия треков:
 - **C** (Copy) — трек копируется, оригинал остаётся на месте
@@ -336,6 +379,8 @@ Rhythm Sort — это программа для Windows/Mac, которая п�
 **Reset All** — полностью сбросить всё и начать заново.
 
 **⚙️** — открыть настройки.
+
+Всё окно можно перетаскивать, зажав и удерживая любую свободную область верхней панели.
 
 ### Очередь треков (правая панель)
 Показывает все треки с их статусами:
@@ -350,6 +395,12 @@ Rhythm Sort — это программа для Windows/Mac, которая п�
 | ⚠️ Error | Файл повреждён, программа пропустила его автоматически |
 
 Кликни на любой трек чтобы перейти к нему. Перемещённые и повреждённые треки недоступны для перехода.
+
+**🔍 Поле поиска** — введи часть имени файла над очередью чтобы мгновенно отфильтровать список. Очисти поиск (✗) чтобы увидеть всю очередь снова. Счётчик показывает сколько треков подходит под запрос.
+
+**Кнопка ⦿** — возвращает список очереди к тому треку, который сейчас играет — удобно если ты прокрутил список далеко, что-то искал.
+
+**Кнопка Cover All** — появляется когда у текущего трека есть обложка; одним кликом применяет эту же обложку ко всем остальным трекам в очереди.
 
 ---
 
@@ -395,16 +446,18 @@ Rhythm Sort — это программа для Windows/Mac, которая п�
 - *VU Meter* — классические студийные стрелки
 - *Lissajous* — геометрические фигуры от звука
 - *Wave (Low Profile)* — компактная волна, занимает мало места
-- *Particle Flow* - Частицы летят вверх с хвостами, реагируют на каждую частоту
-- *DNA Helix* - Вращающаяся двойная спираль, перемычки пульсируют под бас
-- *Ink Drop* - Органические пятна которые расплываются и дышат
-- *City Lights* - Тонкие неоновые столбики с отражением и свечением верхушек
-- *Neon Ring* - Три концентрических кольца + частицы по окружности
-- *Mirror Bars* - Зеркальный эквалайзер с градиентом от синего к фиолетовому
-- *Plasma* - Пять цветных blob-пятен смешиваются через screen blend mode
-- *Oscilloscope* - Зелёная линия на тёмной сетке как на старом осциллографе
+- *Particle Flow* — частицы летят вверх с хвостами, реагируют на каждую частоту
+- *DNA Helix* — вращающаяся двойная спираль, перемычки пульсируют под бас
+- *Ink Drop* — органические пятна которые расплываются и дышат
+- *City Lights* — тонкие неоновые столбики с отражением и свечением верхушек
+- *Neon Ring* — три концентрических кольца + частицы по окружности
+- *Mirror Bars* — зеркальный эквалайзер с градиентом от синего к фиолетовому
+- *Plasma* — светящиеся цветные сгустки, переливаются и пульсируют под бас
+- *Oscilloscope* — зелёная линия на тёмной сетке как на старом осциллографе
 
 **Sensitivity** — насколько активно реагирует анимация на звук.
+
+**Performance Mode** — снижает FPS для слабых компьютеров.
 
 ---
 
@@ -430,9 +483,15 @@ Rhythm Sort — это программа для Windows/Mac, которая п�
 
 Теперь во время прослушивания нажимай нужную цифру — трек сразу отправится в соответствующую папку.
 
+> Если нажмёшь клавишу которая уже привязана к другой папке — программа спросит, перепривязать ли её на новую папку или отменить.
+
+Каждая привязка папки запоминает последнюю открытую внутри неё подпапку отдельно от остальных привязок — так что заходить в глубоко вложенную папку второй раз будет быстрее.
+
 ### Управление панелью
 - Панель можно **перетаскивать** по экрану за заголовок
+- Панель можно **изменять размер**, потянув за правый или нижний край — регулируется и ширина, и высота, размер запоминается
 - Кнопка **−** сворачивает панель (Split Mode при этом остаётся включённым)
+- Кнопка ⏭ внутри панели включает или выключает автопереход к следующему треку после сортировки в Split Mode — отдельно от настройки автовоспроизведения в верхней панели
 - При наведении на папку появляется 🗑️ — удалить эту папку
 - **Clear All Bindings** — удалить все папки и привязки сразу
 
@@ -449,7 +508,7 @@ Rhythm Sort — это программа для Windows/Mac, которая п�
 3. Перетащи картинку в окно или кликни чтобы выбрать файл (JPG, PNG до 5 МБ)
 4. Нажми **Save Cover**
 
-**Apply Cover to All** — Кнопка в правой панели. Нажми и она запишется во все треки очереди сразу.
+**Apply Cover to All** — кнопка в правой панели. Нажми и она запишется во все треки очереди сразу.
 
 ---
 
@@ -460,7 +519,28 @@ Rhythm Sort — это программа для Windows/Mac, которая п�
 3. Введи новое название (расширение .mp3 и т.д. добавится само)
 4. **Enter** или ✓ — сохранить, **Escape** или ✗ — отменить
 
-Программа переименует сам файл на диске.
+Программа переименует сам файл на диске **и** запишет новое название во все текстовые теги трека (Title, Artist, Album, Year, Genre, Track #, Disc #, Album Artist, Composer, Comment) — поэтому новое имя будет видно везде одинаково, а не только в названии файла.
+
+### Добавление или удаление префикса / суффикса
+
+Вместо переименования треков по одному можно массово добавить короткий текст в начало (префикс) или конец (суффикс) имени файла:
+
+1. Наведи мышь на название трека и нажми **[P]** (префикс) или **[S]** (суффикс)
+2. Введи текст который хочешь добавить и нажми Enter (можно добавить несколько кусков текста подряд)
+3. Выбери:
+   - **+ Apply to current** — добавить только к текущему треку
+   - **+ Apply to all** — добавить ко всем трекам в очереди (треки где он уже есть — пропускаются)
+   - **− Remove from current** / **− Remove from all** — убрать обратно
+
+Удобно когда нужно подписать целую партию треков, например, именем DJ, припиской об эдите или меткой релиза, без переименования каждого файла руками.
+
+---
+
+## 🎵 Редактирование тегов напрямую
+
+Под плеером можно открыть панель **Tags** чтобы посмотреть и отредактировать Title, Artist, Album, Year, Genre, Track #, BPM, Key, Composer и Comment текущего трека прямо там, без переименования файла. Нажми **Save** (или Enter в любом поле) чтобы записать изменения в файл.
+
+Если в настройках включён анализ BPM/тональности, здесь же появится кнопка **Analyze** — нажми её чтобы автоматически определить BPM и тональность текущего трека.
 
 ---
 
@@ -477,7 +557,7 @@ Rhythm Sort — это программа для Windows/Mac, которая п�
 
 - **Один клик** — выбрать папку
 - **Двойной клик** — войти внутрь
-- **Правый клик** — переименовать или удалить папку. Примечание - При удалении файл стирается с компютера полностью без перемещения в корзину
+- **Правый клик** — переименовать или удалить папку. Примечание — при удалении файл стирается с компьютера полностью без перемещения в корзину
 
 В строке статистики показывается сколько аудиофайлов находится в текущей папке.
 
@@ -485,7 +565,7 @@ Rhythm Sort — это программа для Windows/Mac, которая п�
 
 ## 🔴 Повреждённые файлы
 
-Если файл невозможно воспроизвести — программа автоматически пометит его ⚠️ и перейдёт к следующему автоматически откидывая его в список "Broken Files". Остальные треки при этом не пострадают.
+Если файл невозможно воспроизвести — программа автоматически пометит его ⚠️, добавит в список **Broken Files** и перейдёт к следующему треку. Остальные треки при этом не пострадают. Открой панель Broken Files чтобы скопировать названия (одно или все сразу) или сохранить весь список в текстовый файл для дальнейшей проверки.
 
 ---
 
@@ -503,17 +583,19 @@ Rhythm Sort — это программа для Windows/Mac, которая п�
 
 **Не уверен в решении?** Нажми `S` — трек получит статус «Played» и к нему можно вернуться позже кликнув в правой панели.
 
-**Большая коллекция?** Используй перемотку `A` / `D` чтобы быстро оценивать треки не слушая целиком. В настройках поставь шаг перемотки 5, 10, 15, 20, 25, 30 секунд.
+**Большая коллекция?** Используй перемотку `A` / `D` чтобы быстро оценивать треки не слушая целиком — зажми клавишу чтобы перематывать непрерывно. В настройках поставь шаг перемотки 5, 10, 15, 20, 25, 30 секунд.
 
 **Сортируешь по жанрам?** Включи Split Mode и привяжи папки к клавишам. Намного быстрее чем менять папку назначения вручную каждый раз.
 
 **Боишься за файлы?** Используй режим **C (Copy)** — оригиналы останутся на месте и ничего не потеряется если что-то пойдёт не так.
 
+**Искать конкретный трек?** Используй поле поиска над очередью вместо прокрутки сотен файлов вручную.
+
 ---
 
 ## 🛠️ Системные требования
 
-- **ОС:** Windows 10 или Windows 11/MacOS(Universal)
+- **ОС:** Windows 10 или Windows 11 / macOS (Universal — работает и на Intel, и на Apple Silicon Mac)
 - **Оперативная память:** от 256 МБ
 - **Место на диске:** около 150 МБ
 
