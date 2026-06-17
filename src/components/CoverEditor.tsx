@@ -39,8 +39,11 @@ export function CoverEditor({ currentCover, trackName, trackId, onSave, onClose 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
+    
     const file = e.dataTransfer.files[0];
-    if (file) handleFileSelect(file);
+    if (file) {
+      handleFileSelect(file);
+    }
   }, [handleFileSelect]);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
@@ -67,16 +70,8 @@ export function CoverEditor({ currentCover, trackName, trackId, onSave, onClose 
   return (
     <Dialog open={true} onOpenChange={onClose}>
       <DialogContent className="max-w-md">
-        <DialogHeader className="min-w-0 overflow-hidden">
-          <DialogTitle className="flex flex-col gap-1 overflow-hidden">
-            <span className="text-sm font-normal text-muted-foreground">Edit Cover</span>
-            <span
-              className="text-base font-semibold break-all line-clamp-2"
-              title={trackName}
-            >
-              {trackName}
-            </span>
-          </DialogTitle>
+        <DialogHeader>
+          <DialogTitle>Edit Cover - {trackName}</DialogTitle>
         </DialogHeader>
         
         <div className="space-y-4">
@@ -108,8 +103,8 @@ export function CoverEditor({ currentCover, trackName, trackId, onSave, onClose 
             className={`
               border-2 border-dashed rounded-lg p-8 text-center cursor-pointer
               transition-all duration-200
-              ${isDragging
-                ? "border-primary bg-primary/10"
+              ${isDragging 
+                ? "border-primary bg-primary/10" 
                 : "border-border hover:border-primary/50"
               }
             `}
@@ -119,8 +114,12 @@ export function CoverEditor({ currentCover, trackName, trackId, onSave, onClose 
             onDragLeave={handleDragLeave}
           >
             <Upload className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
-            <p className="text-sm text-muted-foreground">Click or drag image here</p>
-            <p className="text-xs text-muted-foreground mt-1">PNG, JPG, GIF up to 5MB</p>
+            <p className="text-sm text-muted-foreground">
+              Click or drag image here
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">
+              PNG, JPG, GIF up to 5MB
+            </p>
           </div>
 
           <input
@@ -136,8 +135,12 @@ export function CoverEditor({ currentCover, trackName, trackId, onSave, onClose 
 
           {/* Actions */}
           <div className="flex justify-end gap-2 pt-4">
-            <Button variant="outline" onClick={onClose}>Cancel</Button>
-            <Button onClick={handleSave}>Save Cover</Button>
+            <Button variant="outline" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button onClick={handleSave}>
+              Save Cover
+            </Button>
           </div>
         </div>
       </DialogContent>

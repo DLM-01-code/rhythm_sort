@@ -17,6 +17,9 @@ interface SettingsState {
   rejectMode: RejectMode;
   rejectedFolder: string | null;
   targetFolder: string | null;
+  // Память последних открытых папок
+  lastSourceFolder: string | null;
+  lastTargetFolder: string | null;
   seekStep: number;
   autoPlayNext: boolean;
   autoPlayAfterLoad: boolean;
@@ -60,6 +63,8 @@ export const useSettings = create<SettingsState>()(
       rejectMode: "none",
       rejectedFolder: null,
       targetFolder: null,
+      lastSourceFolder: null,
+      lastTargetFolder: null,
       seekStep: 10,
       autoPlayNext: true,
       autoPlayAfterLoad: true,

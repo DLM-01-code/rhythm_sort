@@ -9,16 +9,27 @@ import { useSettings } from "@/store/settingsStore";
 import { Toaster } from "@/components/ui/sonner";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
+// Инжектируем Mac-специфичные стили один раз
+if (typeof document !== 'undefined' && document.body.classList.contains('is-mac')) {
+  const style = document.createElement('style');
+  style.textContent = `
+    .is-mac .mac-toolbar-inner { padding-left: 80px !important; }
+  `;
+  document.head.appendChild(style);
+}
+
 function cn(...classes: (string | boolean | undefined)[]) {
   return classes.filter(Boolean).join(' ');
 }
+
+const IS_MAC = typeof window !== 'undefined' && navigator.platform.toUpperCase().includes('MAC');
 
 function App() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [sidebarWidth, setSidebarWidth] = useState(320);
   const [isResizing, setIsResizing] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
-  
+
   const theme = useSettings((s) => s.theme);
 
   useEffect(() => {
@@ -63,7 +74,7 @@ function App() {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-background text-foreground">
+    <div className={cn("flex flex-col h-screen bg-background text-foreground", IS_MAC && "is-mac")}>
       <Toolbar onOpenSettings={() => setSettingsOpen(true)} />
       <div className="flex flex-1 overflow-hidden relative">
         <div className="flex-1 min-w-0">
@@ -109,6 +120,12 @@ function App() {
       <Toaster theme={theme === "light" ? "light" : "dark"} richColors position="top-center" />
       <BrokenFiles />
       <SplitPanel />
+      {/* Powered by label */}
+      <div className="fixed bottom-3 left-4 z-30 pointer-events-none select-none">
+        <span className="text-[11px] text-muted-foreground/40 font-mono tracking-widest">
+          Powered By DJ DLM
+        </span>
+      </div>
     </div>
   );
 }

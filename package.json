@@ -20,7 +20,14 @@
     },
     "files": [
       "dist/**/*",
-      "electron/**/*"
+      "electron/**/*",
+      "node_modules/**/*",
+      "package.json"
+    ],
+    "asarUnpack": [
+      "electron/**/*",
+      "node_modules/node-id3/**/*",
+      "node_modules/music-tempo/**/*"
     ],
     "win": {
       "target": "nsis",

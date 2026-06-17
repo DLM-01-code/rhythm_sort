@@ -1,4 +1,4 @@
-import { useSettings, type CoverApplyMode, type VizMode, type BpmAnalyzeMode } from "@/store/settingsStore";
+import { useSettings, type CoverApplyMode, type VizMode } from "@/store/settingsStore";
 import {
   Dialog,
   DialogContent,
@@ -25,9 +25,6 @@ interface SettingsDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
-// ✅ FIX 4: общий класс для всех SelectContent — непрозрачный фон
-const SELECT_CONTENT_CLASS = "bg-card border-border opacity-100 z-[9999]";
-
 export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
   const {
     theme,
@@ -41,13 +38,6 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
     vizMode,
     vizSensitivity,
     performanceMode,
-    showTagsPanel,
-    continueSession,
-    analyzeBpm,
-    analyzeKey,
-    renameTemplate,
-    brokenStopMode,
-    maxBrokenBeforeStop,
     keys,
     set,
     setKeys,
@@ -105,11 +95,6 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
             <TabsTrigger value="audio" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
               Audio
             </TabsTrigger>
-            {/* METADATA TAB - ЗАКОММЕНТИРОВАН
-            <TabsTrigger value="metadata" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-              Metadata
-            </TabsTrigger>
-            */}
             <TabsTrigger value="visualizer" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
               Visualizer
             </TabsTrigger>
@@ -118,7 +103,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
             </TabsTrigger>
           </TabsList>
 
-          {/* General Tab */}
+          {/* General Tab - без изменений */}
           <TabsContent value="general" className="space-y-4 mt-4">
             <Card className="bg-card border-border">
               <CardHeader>
@@ -149,7 +134,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                     <SelectTrigger className="w-32 bg-background border-border">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent className={SELECT_CONTENT_CLASS}>
+                    <SelectContent className="bg-popover border border-border shadow-xl z-[9999]">
                       <SelectItem value="copy">Copy</SelectItem>
                       <SelectItem value="move">Move</SelectItem>
                     </SelectContent>
@@ -158,7 +143,15 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
 
                 <div className="flex items-center justify-between">
                   <Label className="text-foreground">Reject Mode</Label>
-                  <span className="text-sm text-muted-foreground">Skip Only</span>
+                  <Select value={rejectMode} onValueChange={(v) => set("rejectMode", v as any)}>
+                    <SelectTrigger className="w-32 bg-background border-border">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="bg-popover border border-border shadow-xl z-[9999]">
+                      <SelectItem value="none">Skip Only</SelectItem>
+                      <SelectItem value="move">Move to Folder</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div className="flex items-center justify-between">
@@ -185,7 +178,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                     <SelectTrigger className="w-40 bg-background border-border">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent className={SELECT_CONTENT_CLASS}>
+                    <SelectContent className="bg-popover border border-border shadow-xl z-[9999]">
                       <SelectItem value="off">Off</SelectItem>
                       <SelectItem value="onAccept">On Accept</SelectItem>
                       <SelectItem value="onFolderLoad">On Folder Load</SelectItem>
@@ -217,124 +210,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                 </div>
               </CardContent>
             </Card>
-
-            <Card className="bg-card border-border">
-              <CardHeader>
-                <CardTitle>Broken File Handling</CardTitle>
-                <CardDescription>What to do when broken files are encountered</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <Label className="text-foreground">On broken file</Label>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      {brokenStopMode === "stop" ? "Stop playback after several broken files in a row" : "Skip one by one, never stop automatically"}
-                    </p>
-                  </div>
-                  <Switch
-                    checked={brokenStopMode === "stop"}
-                    onCheckedChange={(v) => set("brokenStopMode", v ? "stop" : "one")}
-                    className="data-[state=checked]:bg-primary"
-                  />
-                </div>
-                {brokenStopMode === "stop" && (
-                  <div className="space-y-2">
-                    <Label className="text-foreground">Stop after {maxBrokenBeforeStop} broken in a row</Label>
-                    <Slider
-                      value={[maxBrokenBeforeStop]}
-                      min={1} max={10} step={1}
-                      onValueChange={([v]) => set("maxBrokenBeforeStop", v)}
-                      className="[&_[role=slider]]:bg-primary"
-                    />
-                  </div>
-                )}
-              </CardContent>
-            </Card>
           </TabsContent>
-
-          {/* METADATA TAB CONTENT - ЗАКОММЕНТИРОВАН
-          <TabsContent value="metadata" className="space-y-4 mt-4">
-            <Card className="bg-card border-border">
-              <CardHeader>
-                <CardTitle>Tags Panel</CardTitle>
-                <CardDescription>Display and edit ID3 tags under the player</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <Label className="text-foreground">Show Tags Panel</Label>
-                  <Switch
-                    checked={showTagsPanel}
-                    onCheckedChange={(checked) => set("showTagsPanel", checked)}
-                    className="data-[state=checked]:bg-primary"
-                  />
-                </div>
-                <div className="flex items-center justify-between">
-                  <Label className="text-foreground">Continue Session on Start</Label>
-                  <Switch
-                    checked={continueSession}
-                    onCheckedChange={(checked) => set("continueSession", checked)}
-                    className="data-[state=checked]:bg-primary"
-                  />
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="bg-card border-border">
-              <CardHeader>
-                <CardTitle>Auto-Analysis on Accept</CardTitle>
-                <CardDescription>Analyze and write BPM / Key when accepting a track</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <Label className="text-foreground">Analyze BPM on Accept</Label>
-                    <p className="text-xs text-muted-foreground mt-0.5">Detects tempo and writes it to the file tag</p>
-                  </div>
-                  <Switch
-                    checked={analyzeBpm}
-                    onCheckedChange={(checked) => set("analyzeBpm", checked)}
-                    className="data-[state=checked]:bg-primary"
-                  />
-                </div>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <Label className="text-foreground">Analyze Key on Accept</Label>
-                    <p className="text-xs text-muted-foreground mt-0.5">Detects musical key and writes it to the file tag</p>
-                  </div>
-                  <Switch
-                    checked={analyzeKey}
-                    onCheckedChange={(checked) => set("analyzeKey", checked)}
-                    className="data-[state=checked]:bg-primary"
-                  />
-                </div>
-                {(analyzeBpm || analyzeKey) && (
-                  <p className="text-xs text-yellow-500/80 bg-yellow-500/10 rounded p-2">
-                    ⚠️ Analysis runs after each Accept — may add 1–3 seconds per track
-                  </p>
-                )}
-              </CardContent>
-            </Card>
-
-            <Card className="bg-card border-border">
-              <CardHeader>
-                <CardTitle>Batch Rename Template</CardTitle>
-                <CardDescription>Template for renaming files via Tags Panel</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <input
-                  type="text"
-                  value={renameTemplate}
-                  onChange={(e) => set("renameTemplate", e.target.value)}
-                  className="w-full h-9 px-3 rounded-md border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-                  placeholder="{BPM} - {Key} - {Artist} - {Title}"
-                />
-                <p className="text-xs text-muted-foreground">
-                  Available: {"{Title}"} {"{Artist}"} {"{Album}"} {"{Year}"} {"{Genre}"} {"{BPM}"} {"{Key}"} {"{TrackNumber}"}
-                </p>
-              </CardContent>
-            </Card>
-          </TabsContent>
-          */}
 
           {/* Visualizer Tab */}
           <TabsContent value="visualizer" className="space-y-4 mt-4">
@@ -369,7 +245,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                         <SelectTrigger className="w-48 bg-background border-border">
                           <SelectValue />
                         </SelectTrigger>
-                        <SelectContent className={SELECT_CONTENT_CLASS}>
+                        <SelectContent className="bg-popover border border-border shadow-xl z-[9999]">
                           <SelectItem value="dual_waveform">🎛️ Dual Waveform</SelectItem>
                           <SelectItem value="rms_meter">📏 RMS Meter</SelectItem>
                           <SelectItem value="aurora">🌌 Aurora</SelectItem>
@@ -433,8 +309,8 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                     <Label className="text-xs text-muted-foreground">Accept Track</Label>
                     <div
                       className={`p-2 border rounded-md text-center font-mono text-sm cursor-pointer transition-all ${
-                        waitingForKey === "accept"
-                          ? "bg-primary text-primary-foreground border-primary"
+                        waitingForKey === "accept" 
+                          ? "bg-primary text-primary-foreground border-primary" 
                           : "bg-muted/50 hover:bg-muted border-border text-foreground"
                       }`}
                       onClick={() => startKeyChange("accept")}
@@ -447,8 +323,8 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                     <Label className="text-xs text-muted-foreground">Reject/Skip Track</Label>
                     <div
                       className={`p-2 border rounded-md text-center font-mono text-sm cursor-pointer transition-all ${
-                        waitingForKey === "reject"
-                          ? "bg-primary text-primary-foreground border-primary"
+                        waitingForKey === "reject" 
+                          ? "bg-primary text-primary-foreground border-primary" 
                           : "bg-muted/50 hover:bg-muted border-border text-foreground"
                       }`}
                       onClick={() => startKeyChange("reject")}
@@ -461,8 +337,8 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                     <Label className="text-xs text-muted-foreground">Play/Pause</Label>
                     <div
                       className={`p-2 border rounded-md text-center font-mono text-sm cursor-pointer transition-all ${
-                        waitingForKey === "playPause"
-                          ? "bg-primary text-primary-foreground border-primary"
+                        waitingForKey === "playPause" 
+                          ? "bg-primary text-primary-foreground border-primary" 
                           : "bg-muted/50 hover:bg-muted border-border text-foreground"
                       }`}
                       onClick={() => startKeyChange("playPause")}
@@ -475,8 +351,8 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                     <Label className="text-xs text-muted-foreground">Previous Track</Label>
                     <div
                       className={`p-2 border rounded-md text-center font-mono text-sm cursor-pointer transition-all ${
-                        waitingForKey === "prevTrack"
-                          ? "bg-primary text-primary-foreground border-primary"
+                        waitingForKey === "prevTrack" 
+                          ? "bg-primary text-primary-foreground border-primary" 
                           : "bg-muted/50 hover:bg-muted border-border text-foreground"
                       }`}
                       onClick={() => startKeyChange("prevTrack")}
@@ -489,8 +365,8 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                     <Label className="text-xs text-muted-foreground">Next Track</Label>
                     <div
                       className={`p-2 border rounded-md text-center font-mono text-sm cursor-pointer transition-all ${
-                        waitingForKey === "nextTrack"
-                          ? "bg-primary text-primary-foreground border-primary"
+                        waitingForKey === "nextTrack" 
+                          ? "bg-primary text-primary-foreground border-primary" 
                           : "bg-muted/50 hover:bg-muted border-border text-foreground"
                       }`}
                       onClick={() => startKeyChange("nextTrack")}
@@ -503,8 +379,8 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                     <Label className="text-xs text-muted-foreground">Volume Up</Label>
                     <div
                       className={`p-2 border rounded-md text-center font-mono text-sm cursor-pointer transition-all ${
-                        waitingForKey === "volumeUp"
-                          ? "bg-primary text-primary-foreground border-primary"
+                        waitingForKey === "volumeUp" 
+                          ? "bg-primary text-primary-foreground border-primary" 
                           : "bg-muted/50 hover:bg-muted border-border text-foreground"
                       }`}
                       onClick={() => startKeyChange("volumeUp")}
@@ -517,8 +393,8 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                     <Label className="text-xs text-muted-foreground">Volume Down</Label>
                     <div
                       className={`p-2 border rounded-md text-center font-mono text-sm cursor-pointer transition-all ${
-                        waitingForKey === "volumeDown"
-                          ? "bg-primary text-primary-foreground border-primary"
+                        waitingForKey === "volumeDown" 
+                          ? "bg-primary text-primary-foreground border-primary" 
                           : "bg-muted/50 hover:bg-muted border-border text-foreground"
                       }`}
                       onClick={() => startKeyChange("volumeDown")}
@@ -531,8 +407,8 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                     <Label className="text-xs text-muted-foreground">Seek Backward</Label>
                     <div
                       className={`p-2 border rounded-md text-center font-mono text-sm cursor-pointer transition-all ${
-                        waitingForKey === "seekBack"
-                          ? "bg-primary text-primary-foreground border-primary"
+                        waitingForKey === "seekBack" 
+                          ? "bg-primary text-primary-foreground border-primary" 
                           : "bg-muted/50 hover:bg-muted border-border text-foreground"
                       }`}
                       onClick={() => startKeyChange("seekBack")}
@@ -545,8 +421,8 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                     <Label className="text-xs text-muted-foreground">Seek Forward</Label>
                     <div
                       className={`p-2 border rounded-md text-center font-mono text-sm cursor-pointer transition-all ${
-                        waitingForKey === "seekForward"
-                          ? "bg-primary text-primary-foreground border-primary"
+                        waitingForKey === "seekForward" 
+                          ? "bg-primary text-primary-foreground border-primary" 
                           : "bg-muted/50 hover:bg-muted border-border text-foreground"
                       }`}
                       onClick={() => startKeyChange("seekForward")}

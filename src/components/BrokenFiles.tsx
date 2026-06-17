@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { usePlayer } from "@/store/playerStore";
 import { Button } from "@/components/ui/button";
 import { AlertTriangle, Copy, Trash2, ChevronUp, ChevronDown, Save } from "lucide-react";
@@ -12,15 +12,6 @@ function cn(...classes: (string | boolean | undefined)[]) {
 export function BrokenFiles() {
   const { brokenTracks, clearBrokenTracks, sourceFolder } = usePlayer();
   const [isExpanded, setIsExpanded] = useState(true);
-
-  // ДОБАВЬ ЭТОТ ЛОГ
-  console.log('🔄 BrokenFiles RENDER, brokenTracks count:', brokenTracks.length);
-  console.log('📋 Broken files list:', brokenTracks.map(t => t.name));
-
-  // ДОБАВЬ ЭФФЕКТ ДЛЯ ОТСЛЕЖИВАНИЯ ИЗМЕНЕНИЙ
-  useEffect(() => {
-    console.log('💥 brokenTracks CHANGED! New count:', brokenTracks.length);
-  }, [brokenTracks.length, brokenTracks]);
 
   if (brokenTracks.length === 0) return null;
 

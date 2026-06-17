@@ -8,6 +8,8 @@
     --foreground: 222.2 84% 4.9%;
     --card: 0 0% 100%;
     --card-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
     --primary: 221.2 83.2% 53.3%;
     --primary-foreground: 210 40% 98%;
     --destructive: 0 84.2% 60.2%;
@@ -22,6 +24,8 @@
     --foreground: 210 40% 98%;
     --card: 222.2 84% 4.9%;
     --card-foreground: 210 40% 98%;
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
     --primary: 217.2 91.2% 59.8%;
     --primary-foreground: 222.2 47.4% 11.2%;
     --destructive: 0 62.8% 30.6%;
@@ -39,4 +43,21 @@
     background-color: hsl(var(--background));
     color: hsl(var(--foreground));
   }
+}
+
+/* Непрозрачные выпадающие меню */
+[data-radix-select-content],
+[data-radix-dropdown-menu-content],
+[data-radix-popover-content],
+[data-radix-context-menu-content],
+[data-radix-tooltip-content] {
+  background-color: hsl(222.2, 84%, 7%) !important;
+  opacity: 1 !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+[data-radix-select-content][data-state="open"],
+[data-radix-dropdown-menu-content][data-state="open"] {
+  opacity: 1 !important;
 }

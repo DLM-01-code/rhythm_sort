@@ -54,6 +54,8 @@ export function Toolbar({ onOpenSettings }: { onOpenSettings: () => void }) {
   const resetPlayer = usePlayer((s) => s.reset);
   const sourceFolder = usePlayer((s) => s.sourceFolder);
   const targetFolder = useSettings((s) => s.targetFolder);
+  const lastSourceFolder = useSettings((s) => s.lastSourceFolder);
+  const lastTargetFolder = useSettings((s) => s.lastTargetFolder);
   const autoPlayAfterLoad = useSettings((s) => s.autoPlayAfterLoad);
   const autoPlayNext = useSettings((s) => s.autoPlayNext);
   const vizEnabled = useSettings((s) => s.vizEnabled);
@@ -75,8 +77,10 @@ export function Toolbar({ onOpenSettings }: { onOpenSettings: () => void }) {
     try {
       const api = isBrowser ? window.electronAPI : null;
       if (api) {
-        const folder = await api.selectFolderWithPreview(sourceFolder || undefined, 'source');
+        const folder = await api.selectFolderWithPreview(lastSourceFolder || sourceFolder || undefined, 'source');
         if (!folder) return;
+        // Запоминаем последнюю открытую папку
+        set("lastSourceFolder", folder);
         if (isSameFolder(folder, targetFolder)) {
           toast.error("Source folder cannot be the same as Target folder!");
           setScanning(false);
@@ -126,8 +130,9 @@ export function Toolbar({ onOpenSettings }: { onOpenSettings: () => void }) {
   const pickTargetFolder = useCallback(async () => {
     const api = isBrowser ? window.electronAPI : null;
     if (api) {
-      const folder = await api.selectFolderWithPreview(targetFolder || undefined, 'target');
+      const folder = await api.selectFolderWithPreview(lastTargetFolder || targetFolder || undefined, 'target');
       if (folder) {
+        set("lastTargetFolder", folder);
         if (isSameFolder(folder, sourceFolder)) {
           toast.error("Target folder cannot be the same as Source folder!");
           return;
@@ -183,27 +188,33 @@ export function Toolbar({ onOpenSettings }: { onOpenSettings: () => void }) {
 
   return (
     <>
-      <div className="flex flex-col border-b border-border bg-card/60 backdrop-blur">
-        <div className="flex items-center justify-between px-4 h-14">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-primary/15 flex items-center justify-center">
+      <div className="flex flex-col border-b border-border bg-card/60 backdrop-blur" style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}>
+        <div
+          className="mac-toolbar-inner flex items-center justify-between px-4 h-14"
+          style={{
+            paddingLeft: typeof window !== 'undefined' && document.body.classList.contains('is-mac') ? '88px' : undefined,
+            WebkitAppRegion: 'drag',
+          } as React.CSSProperties}
+        >
+          <div className="flex items-center gap-2 min-w-0" style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
+            <div className="w-8 h-8 rounded-lg bg-primary/15 flex items-center justify-center flex-shrink-0">
               <span className="text-primary text-sm font-bold">♪</span>
             </div>
-            <span className="font-semibold tracking-tight">Rhythm Sort</span>
+            <span className="font-semibold tracking-tight hidden sm:inline flex-shrink-0">Rhythm Sort</span>
 
             <Button
               size="sm"
               variant={isSplitMode ? "default" : "secondary"}
               onClick={handleToggleSplitMode}
-              className="gap-2 ml-4 font-medium"
+              className="gap-1 ml-2 font-medium flex-shrink-0"
               disabled={scanning}
             >
               <Split className="w-4 h-4" />
-              Split
+              <span className="hidden md:inline">Split</span>
             </Button>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 flex-shrink-0" style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
             <Button
               size="sm"
               variant="destructive"
@@ -213,15 +224,15 @@ export function Toolbar({ onOpenSettings }: { onOpenSettings: () => void }) {
               disabled={scanning}
             >
               <Trash2 className="w-4 h-4" />
-              Reset All
+              <span className="hidden lg:inline">Reset All</span>
             </Button>
 
             <Button
               size="sm"
               variant={acceptMode === "move" ? "default" : "secondary"}
               onClick={handleToggleAcceptMode}
-              title={acceptMode === "move" ? "Accept Mode: Move (click to switch to Copy)" : "Accept Mode: Copy (click to switch to Move)"}
-              className="font-mono font-bold w-8 h-8 p-0"
+              title={acceptMode === "move" ? "Accept Mode: Move" : "Accept Mode: Copy"}
+              className="font-mono font-bold w-8 h-8 p-0 flex-shrink-0"
               disabled={scanning}
             >
               {acceptMode === "move" ? "M" : "C"}
@@ -232,7 +243,7 @@ export function Toolbar({ onOpenSettings }: { onOpenSettings: () => void }) {
               variant={autoPlayNext ? "default" : "secondary"}
               onClick={handleToggleAutoPlay}
               title={autoPlayNext ? "Auto-play ON" : "Auto-play OFF"}
-              className="font-medium"
+              className="w-8 h-8 p-0 flex-shrink-0"
             >
               <SkipForward className="w-4 h-4" />
             </Button>
@@ -242,24 +253,19 @@ export function Toolbar({ onOpenSettings }: { onOpenSettings: () => void }) {
               variant={vizEnabled ? "default" : "secondary"}
               onClick={handleToggleVisualizer}
               title={vizEnabled ? "Disable visualizer" : "Enable visualizer"}
-              className="font-medium"
+              className="w-8 h-8 p-0 flex-shrink-0"
             >
               {vizEnabled ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
             </Button>
 
-            {isBrowser && !window.electronAPI && (
-              <span className="text-xs text-muted-foreground hidden sm:inline">
-                Browser preview · file ops require desktop app
-              </span>
-            )}
-            <Button size="sm" variant="secondary" onClick={onOpenSettings} className="font-medium">
+            <Button size="sm" variant="secondary" onClick={onOpenSettings} className="w-8 h-8 p-0 flex-shrink-0">
               <SettingsIcon className="w-4 h-4" />
             </Button>
           </div>
         </div>
 
         {showProgress && (
-          <div className="px-4 py-2 bg-muted/30">
+          <div className="px-4 py-2 bg-muted/30" style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
             <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
               <span>Loading tracks...</span>
               <span>{scanTotal} files loaded</span>
@@ -270,7 +276,7 @@ export function Toolbar({ onOpenSettings }: { onOpenSettings: () => void }) {
           </div>
         )}
 
-        <div className="flex items-center justify-center gap-6 px-4 py-4 bg-muted/20">
+        <div className="flex items-center justify-center gap-4 px-4 py-3 bg-muted/20" style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
           <div
             className={cn(
               "flex-1 max-w-sm rounded-xl border-2 transition-all cursor-pointer",

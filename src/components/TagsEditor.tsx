@@ -1,277 +1,171 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Loader2, Music2, Zap } from "lucide-react";
 import { toast } from "sonner";
-import { Save, RefreshCw, Tag, ChevronDown, ChevronUp, Loader2 } from "lucide-react";
-
-interface TagData {
-  title: string;
-  artist: string;
-  album: string;
-  year: string;
-  genre: string;
-  trackNumber: string;
-  comment: string;
-  albumArtist: string;
-  composer: string;
-  discNumber: string;
-  bpm: string;
-  initialKey: string;
-}
+import { useSettings } from "@/store/settingsStore";
+import { usePlayer } from "@/store/playerStore";
 
 interface TagsEditorProps {
   filePath: string;
   trackName: string;
-  onTagsUpdated?: (tags: Partial<TagData>) => void;
 }
 
-const EMPTY_TAGS: TagData = {
-  title: "", artist: "", album: "", year: "", genre: "",
-  trackNumber: "", comment: "", albumArtist: "", composer: "",
-  discNumber: "", bpm: "", initialKey: "",
-};
+const TAG_FIELDS = [
+  { key: "title",       label: "Title" },
+  { key: "artist",      label: "Artist" },
+  { key: "album",       label: "Album" },
+  { key: "year",        label: "Year" },
+  { key: "genre",       label: "Genre" },
+  { key: "trackNumber", label: "Track #" },
+  { key: "bpm",         label: "BPM" },
+  { key: "key",         label: "Key" },
+  { key: "composer",    label: "Composer" },
+  { key: "comment",     label: "Comment" },
+] as const;
 
-const FIELD_LABELS: Record<keyof TagData, string> = {
-  title: "Title",
-  artist: "Artist",
-  album: "Album",
-  year: "Year",
-  genre: "Genre",
-  trackNumber: "Track №",
-  comment: "Comment",
-  albumArtist: "Album Artist",
-  composer: "Composer",
-  discNumber: "Disc №",
-  bpm: "BPM",
-  initialKey: "Key",
-};
+type TagKey = typeof TAG_FIELDS[number]["key"];
+type Tags = Partial<Record<TagKey, string>>;
 
-// Поля показываемые в основном ряду
-const PRIMARY_FIELDS: (keyof TagData)[] = ["title", "artist", "album", "year", "genre", "bpm", "initialKey"];
-// Поля в расширенном блоке
-const EXTRA_FIELDS: (keyof TagData)[] = ["trackNumber", "albumArtist", "composer", "discNumber", "comment"];
+export function TagsEditor({ filePath, trackName }: TagsEditorProps) {
+  const analyzeMode = useSettings((s) => s.bpmAnalyzeMode);
+  const tracks      = usePlayer((s) => s.tracks);
+  const currentIdx  = usePlayer((s) => s.currentIndex);
+  const trackId     = tracks[currentIdx]?.id || "";
 
-export function TagsEditor({ filePath, trackName, onTagsUpdated }: TagsEditorProps) {
-  const [tags, setTags] = useState<TagData>(EMPTY_TAGS);
-  const [original, setOriginal] = useState<TagData>(EMPTY_TAGS);
+  const [tags, setTags]           = useState<Tags>({});
   const [isLoading, setIsLoading] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [showExtra, setShowExtra] = useState(false);
-  const [isDirty, setIsDirty] = useState(false);
+  const [isSaving, setIsSaving]   = useState(false);
+  const [isDirty, setIsDirty]     = useState(false);
 
-  const loadTags = useCallback(async () => {
+  useEffect(() => {
     if (!filePath) return;
+    setIsDirty(false);
+    loadTags();
+  }, [filePath]);
+
+  const loadTags = async () => {
     const api = window.electronAPI;
-    if (!api?.readFullTags) return;
+    if (!api) return;
     setIsLoading(true);
     try {
-      const result = await api.readFullTags(filePath);
-      if (result) {
-        const loaded = { ...EMPTY_TAGS, ...result };
-        setTags(loaded);
-        setOriginal(loaded);
-        setIsDirty(false);
-      } else {
-        setTags(EMPTY_TAGS);
-        setOriginal(EMPTY_TAGS);
+      const t = await api.readTags(filePath);
+      if (t) {
+        setTags({
+          title:       (t as any).title       || "",
+          artist:      (t as any).artist      || "",
+          album:       (t as any).album       || "",
+          year:        (t as any).year        || "",
+          genre:       (t as any).genre       || "",
+          trackNumber: (t as any).trackNumber || "",
+          bpm:         (t as any).bpm         || "",
+          key:         (t as any).key         || "",
+          composer:    (t as any).composer    || "",
+          comment:     (t as any).comment     || "",
+        });
       }
-    } catch (err) {
-      console.error("Failed to load tags:", err);
+    } catch (e) {
+      console.error("Failed to load tags:", e);
     } finally {
       setIsLoading(false);
     }
-  }, [filePath]);
+  };
 
-  useEffect(() => {
-    loadTags();
-  }, [loadTags]);
-
-  const handleChange = (field: keyof TagData, value: string) => {
-    setTags(prev => ({ ...prev, [field]: value }));
+  const handleChange = (key: TagKey, value: string) => {
+    setTags(prev => ({ ...prev, [key]: value }));
     setIsDirty(true);
   };
 
   const handleSave = async () => {
     const api = window.electronAPI;
-    if (!api?.writeFullTags) {
-      toast.error("Tag writing not supported");
-      return;
-    }
+    if (!api) return;
     setIsSaving(true);
     try {
-      const result = await api.writeFullTags(filePath, tags);
-      if (result.ok) {
-        setOriginal(tags);
-        setIsDirty(false);
-        toast.success("Tags saved");
-        onTagsUpdated?.(tags);
+      if ((api as any).writeFullTags) {
+        await (api as any).writeFullTags(filePath, tags);
       } else {
-        toast.error("Failed to save tags: " + (result.error || "Unknown error"));
+        await api.updateTitle(filePath, tags.title || "");
       }
-    } catch (err) {
-      toast.error("Error saving tags");
+      setIsDirty(false);
+      toast.success("Tags saved");
+    } catch (e) {
+      toast.error("Failed to save tags");
     } finally {
       setIsSaving(false);
     }
   };
 
-  const handleAnalyze = async (type: "bpm" | "key" | "both") => {
-    const api = window.electronAPI;
+  const handleAnalyze = async () => {
+    const api = window.electronAPI as any;
     if (!api) return;
     setIsAnalyzing(true);
     try {
-      if (type === "bpm" || type === "both") {
-        toast.info("Analyzing BPM...");
-        const r = await api.analyzeBpm?.(filePath);
-        if (r?.ok) {
-          setTags(prev => ({ ...prev, bpm: r.bpm }));
-          setIsDirty(true);
-          toast.success(`BPM: ${r.bpm}`);
-        } else {
-          toast.error("BPM analysis failed: " + (r?.error || "error"));
-        }
+      const newTags = { ...tags };
+      if (api.analyzeBpm) {
+        const r = await api.analyzeBpm(filePath);
+        if (r?.bpm) newTags.bpm = String(r.bpm);
       }
-      if (type === "key" || type === "both") {
-        toast.info("Analyzing key...");
-        const r = await api.analyzeKey?.(filePath);
-        if (r?.ok) {
-          setTags(prev => ({ ...prev, initialKey: r.key }));
-          setIsDirty(true);
-          toast.success(`Key: ${r.key}`);
-        } else {
-          toast.error("Key analysis failed: " + (r?.error || "error"));
-        }
+      if (api.analyzeKey) {
+        const r = await api.analyzeKey(filePath);
+        if (r?.key) newTags.key = r.key;
       }
+      setTags(newTags);
+      setIsDirty(true);
+      const parts = [];
+      if (newTags.bpm) parts.push("BPM " + newTags.bpm);
+      if (newTags.key) parts.push("Key " + newTags.key);
+      toast.success(parts.length ? "Analyzed: " + parts.join(" | ") : "Analysis complete");
+    } catch (e) {
+      toast.error("Analysis failed");
     } finally {
       setIsAnalyzing(false);
     }
   };
 
-  const handleDiscard = () => {
-    setTags(original);
-    setIsDirty(false);
-  };
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-4 text-muted-foreground">
+        <Loader2 className="w-4 h-4 animate-spin mr-2" />
+        <span className="text-xs">Loading tags...</span>
+      </div>
+    );
+  }
 
   return (
-    <div className="border-t border-border bg-card/40 backdrop-blur-sm">
-      {/* Header */}
+    <div className="border-t border-border bg-card/40 backdrop-blur">
       <div className="flex items-center justify-between px-4 py-2 border-b border-border/50">
         <div className="flex items-center gap-2">
-          <Tag className="w-3.5 h-3.5 text-muted-foreground" />
+          <Music2 className="w-3.5 h-3.5 text-muted-foreground" />
           <span className="text-xs font-medium text-muted-foreground">Tags</span>
-          {isLoading && <Loader2 className="w-3 h-3 animate-spin text-muted-foreground" />}
           {isDirty && <span className="w-1.5 h-1.5 rounded-full bg-primary" title="Unsaved changes" />}
         </div>
-        <div className="flex items-center gap-1">
-          {/* Analyze buttons */}
-          <Button
-            size="sm"
-            variant="ghost"
-            className="h-6 px-2 text-xs gap-1"
-            onClick={() => handleAnalyze("bpm")}
-            disabled={isAnalyzing || isLoading}
-            title="Analyze BPM"
-          >
-            {isAnalyzing ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
-            BPM
-          </Button>
-          <Button
-            size="sm"
-            variant="ghost"
-            className="h-6 px-2 text-xs"
-            onClick={() => handleAnalyze("key")}
-            disabled={isAnalyzing || isLoading}
-            title="Analyze Key"
-          >
-            Key
-          </Button>
-          <Button
-            size="sm"
-            variant="ghost"
-            className="h-6 px-2 text-xs"
-            onClick={() => handleAnalyze("both")}
-            disabled={isAnalyzing || isLoading}
-            title="Analyze both BPM and Key"
-          >
-            Both
-          </Button>
-          <div className="w-px h-4 bg-border mx-1" />
-          {isDirty && (
-            <Button size="sm" variant="ghost" className="h-6 px-2 text-xs" onClick={handleDiscard}>
-              Discard
+        <div className="flex items-center gap-2">
+          {analyzeMode !== "off" && (
+            <Button size="sm" variant="outline" onClick={handleAnalyze} disabled={isAnalyzing} className="h-6 text-xs gap-1 px-2">
+              {isAnalyzing ? <><Loader2 className="w-3 h-3 animate-spin" /> Analyzing...</> : <><Zap className="w-3 h-3" /> Analyze</>}
             </Button>
           )}
-          <Button
-            size="sm"
-            variant={isDirty ? "default" : "ghost"}
-            className="h-6 px-2 text-xs gap-1"
-            onClick={handleSave}
-            disabled={isSaving || !isDirty}
-          >
-            {isSaving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
-            Save
-          </Button>
-          <Button
-            size="sm"
-            variant="ghost"
-            className="h-6 w-6 p-0"
-            onClick={loadTags}
-            disabled={isLoading}
-            title="Reload tags"
-          >
-            <RefreshCw className="w-3 h-3" />
-          </Button>
+          {isDirty && (
+            <Button size="sm" onClick={handleSave} disabled={isSaving} className="h-6 text-xs px-2">
+              {isSaving ? "Saving..." : "Save"}
+            </Button>
+          )}
         </div>
       </div>
-
-      {/* Primary fields */}
-      <div className="px-4 py-3">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-          {PRIMARY_FIELDS.map(field => (
-            <div key={field} className="space-y-0.5">
-              <Label className="text-[10px] text-muted-foreground uppercase tracking-wide">
-                {FIELD_LABELS[field]}
-              </Label>
-              <Input
-                value={tags[field]}
-                onChange={e => handleChange(field, e.target.value)}
-                className="h-7 text-xs bg-background/60 border-border/60 focus:border-primary"
-                placeholder={`—`}
-                disabled={isLoading || isSaving}
-              />
-            </div>
-          ))}
-        </div>
-
-        {/* Extra fields toggle */}
-        <button
-          className="mt-2 flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground transition-colors"
-          onClick={() => setShowExtra(!showExtra)}
-        >
-          {showExtra ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-          {showExtra ? "Hide extra fields" : "Show more fields"}
-        </button>
-
-        {showExtra && (
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mt-2">
-            {EXTRA_FIELDS.map(field => (
-              <div key={field} className="space-y-0.5">
-                <Label className="text-[10px] text-muted-foreground uppercase tracking-wide">
-                  {FIELD_LABELS[field]}
-                </Label>
-                <Input
-                  value={tags[field]}
-                  onChange={e => handleChange(field, e.target.value)}
-                  className="h-7 text-xs bg-background/60 border-border/60 focus:border-primary"
-                  placeholder="—"
-                  disabled={isLoading || isSaving}
-                />
-              </div>
-            ))}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-1.5 p-3">
+        {TAG_FIELDS.map(({ key, label }) => (
+          <div key={key} className="flex flex-col gap-0.5">
+            <label className="text-[10px] text-muted-foreground px-1">{label}</label>
+            <input
+              type="text"
+              value={tags[key] || ""}
+              onChange={(e) => handleChange(key, e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") handleSave(); }}
+              className="h-7 text-xs bg-background border border-border rounded px-2 focus:outline-none focus:ring-1 focus:ring-primary text-foreground"
+              placeholder="—"
+            />
           </div>
-        )}
+        ))}
       </div>
     </div>
   );

@@ -2,7 +2,8 @@ import { useRef, useEffect, useState, useCallback, lazy, Suspense } from "react"
 import { usePlayer } from "@/store/playerStore";
 import { useSettings } from "@/store/settingsStore";
 import { useSplitStore } from "@/store/splitStore";
-import { useAudioEngine, useTrackUrl, useKeyboardControls } from "@/hooks/useAudioEngine";
+import { useAudioEngine, useKeyboardControls } from "@/hooks/useAudioEngine";
+import { useTrackUrl, preloadTrack } from "@/hooks/useTrackUrl";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Play, Pause, SkipBack, SkipForward, Volume2, VolumeX, Heart, X, RotateCcw, Pencil, Image as ImageIcon } from "lucide-react";
@@ -38,6 +39,9 @@ export function PlayerView() {
   const [showPrefixPanel, setShowPrefixPanel] = useState(false);
   const [prefixes, setPrefixes] = useState<string[]>([]);
   const [newPrefix, setNewPrefix] = useState("");
+  const [suffixes, setSuffixes] = useState<string[]>([]);
+  const [newSuffix, setNewSuffix] = useState("");
+  const [showSuffixPanel, setShowSuffixPanel] = useState(false);
 
   const {
     tracks,
@@ -92,6 +96,19 @@ export function PlayerView() {
     setVizKey(prev => prev + 1);
   }, []);
 
+  // ✅ Предзагрузка соседних треков — пока играет текущий, читаем
+  // следующий (и предыдущий) в фоновый кэш, чтобы переключение было мгновенным
+  useEffect(() => {
+    const nextTrack = tracks[currentIndex + 1];
+    const prevTrack = tracks[currentIndex - 1];
+    if (nextTrack && nextTrack.status !== 'error' && nextTrack.status !== 'moved') {
+      preloadTrack(nextTrack.path);
+    }
+    if (prevTrack && prevTrack.status !== 'error' && prevTrack.status !== 'moved') {
+      preloadTrack(prevTrack.path);
+    }
+  }, [currentIndex, tracks]);
+
   useEffect(() => {
     refreshVisualizer();
   }, [tracks.length, currentIndex, refreshVisualizer]);
@@ -101,6 +118,11 @@ export function PlayerView() {
       refreshVisualizer();
     }
   }, [analyser, refreshVisualizer]);
+
+  // Сбрасываем флаг обработки при смене трека
+  useEffect(() => {
+    isProcessingRef.current = false;
+  }, [currentIndex]);
 
   useEffect(() => {
     setIsClient(true);
@@ -147,45 +169,49 @@ export function PlayerView() {
     }
   }, [currentIndex, trackUrl, currentTrack?.status, ensureAudioContext, isPlaying]);
 
+  const handleSplitAccept = useCallback(async (binding: { keyCode: string; folderPath: string; folderName: string }) => {
+    if (!currentTrack || currentTrack.status === "error") return;
+    if (isProcessingRef.current) return;
+    isProcessingRef.current = true;
+    setIsLoading(true);
+    setError(null);
+    try {
+      const api = window.electronAPI;
+      if (!api) { isProcessingRef.current = false; return; }
+      const result = await api.acceptTrack(currentTrack.path, binding.folderPath, acceptMode);
+      if (result.ok) {
+        addProcessedPath(currentTrack.path);
+        setStatus(currentTrack.id, acceptMode === "move" ? "moved" : "accepted");
+        toast.success(`✅ → ${binding.folderName}: ${currentTrack.name}`);
+        useSplitStore.getState().setBindingLastPath(binding.keyCode, binding.folderPath);
+        if (splitAutoNext) {
+          setTimeout(() => { const { tracks, currentIndex } = usePlayer.getState(); if (currentIndex < tracks.length - 1) next(); }, 100);
+        }
+      } else {
+        throw new Error(result.error || "Failed to accept");
+      }
+    } catch (err) {
+      toast.error(`Failed: ${err instanceof Error ? err.message : "Unknown error"}`);
+    } finally {
+      setIsLoading(false);
+      isProcessingRef.current = false;
+    }
+  }, [currentTrack, acceptMode, setStatus, addProcessedPath, next, splitAutoNext]);
+
   useEffect(() => {
     if (!isSplitMode || isWaitingForBinding) return;
-    const handleSplitKey = async (e: KeyboardEvent) => {
+    const handleSplitKey = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement;
       if (target.tagName === "INPUT" || target.tagName === "TEXTAREA") return;
-      const keyCode = e.code;
-      const binding = getBindingByKey(keyCode);
+      const binding = getBindingByKey(e.code);
       if (binding && currentTrack && currentTrack.status !== "error") {
-        e.preventDefault();
-        e.stopPropagation();
-        const api = window.electronAPI;
-        if (api) {
-          setIsLoading(true);
-          try {
-            const result = await api.acceptTrack(currentTrack.path, binding.folderPath, "copy");
-            if (result.ok) {
-              addProcessedPath(currentTrack.path);
-              setStatus(currentTrack.id, "accepted");
-              toast.success(`✅ Sent to ${binding.folderName}`);
-              if (useSplitStore.getState().splitAutoNext) {
-                setTimeout(() => {
-                  const { tracks, currentIndex } = usePlayer.getState();
-                  if (currentIndex < tracks.length - 1) next();
-                }, 100);
-              }
-            } else {
-              throw new Error(result.error || "Failed to send track");
-            }
-          } catch (err) {
-            toast.error(`Failed to send: ${err instanceof Error ? err.message : "Unknown error"}`);
-          } finally {
-            setIsLoading(false);
-          }
-        }
+        e.preventDefault(); e.stopPropagation();
+        handleSplitAccept(binding);
       }
     };
     window.addEventListener("keydown", handleSplitKey);
     return () => window.removeEventListener("keydown", handleSplitKey);
-  }, [isSplitMode, isWaitingForBinding, getBindingByKey, currentTrack, setStatus, addProcessedPath, next]);
+  }, [isSplitMode, isWaitingForBinding, getBindingByKey, currentTrack, handleSplitAccept]);
 
   const keys = useSettings((s) => s.keys);
 
@@ -236,9 +262,13 @@ export function PlayerView() {
     setTime(newTime);
   };
 
+  const isProcessingRef = useRef(false); // защита от повторных вызовов при зажатой клавише
+
   const handleAccept = useCallback(async () => {
     if (!currentTrack || currentTrack.status === "error") return;
     if (!targetFolder) { toast.error("Please set a target folder first"); return; }
+    if (isProcessingRef.current) return; // уже обрабатывается — игнорируем
+    isProcessingRef.current = true;
     setIsLoading(true);
     setError(null);
     try {
@@ -302,11 +332,14 @@ export function PlayerView() {
       toast.error(`Failed to accept: ${errorMsg}`);
     } finally {
       setIsLoading(false);
+      isProcessingRef.current = false;
     }
   }, [currentTrack, targetFolder, acceptMode, setStatus, addProcessedPath, next, coverApplyMode]);
 
   const handleReject = useCallback(async () => {
     if (!currentTrack || currentTrack.status === "error") return;
+    if (isProcessingRef.current) return; // уже обрабатывается — игнорируем
+    isProcessingRef.current = true;
     setIsLoading(true);
     setError(null);
     try {
@@ -343,6 +376,7 @@ export function PlayerView() {
       toast.error(`Failed to skip: ${errorMsg}`);
     } finally {
       setIsLoading(false);
+      isProcessingRef.current = false;
     }
   }, [currentTrack, rejectMode, rejectedFolder, setStatus, addProcessedPath, next]);
 
@@ -461,7 +495,7 @@ export function PlayerView() {
           </p>
           <div className="pt-8 text-muted-foreground">
             <p className="text-sm">✨ Ready to sort your music collection ✨</p>
-            <p className="text-xs mt-2">🎧 Drag & drop a folder or use the button above</p>
+            <p className="text-xs mt-2">🎧 Use the button above 🎧</p>
           </div>
         </div>
       </div>
@@ -478,7 +512,9 @@ export function PlayerView() {
   }
 
   return (
-    <div className="flex-1 flex flex-col p-4 md:p-6 overflow-auto min-h-0">
+    <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+      {/* Скроллируемая основная часть */}
+      <div className="flex-1 flex flex-col p-4 md:p-6 overflow-y-auto min-h-0">
       {vizEnabled && (
         <div className="mb-4 md:mb-6 flex-shrink-0" key={vizKey}>
           <Visualizer
@@ -515,47 +551,57 @@ export function PlayerView() {
             <Button size="sm" variant="ghost" onClick={() => setIsEditing(false)} disabled={isSaving}>✗</Button>
           </div>
         ) : (
-          <div className="flex items-center justify-center gap-2 group">
+        <div className="flex items-center justify-center gap-1 group flex-wrap px-2">
             <h2 className={cn(
-              "text-xl md:text-2xl font-bold mb-1 md:mb-2 transition-all break-words px-2",
+              "text-lg md:text-2xl font-bold mb-1 md:mb-2 transition-all break-all text-center max-w-full",
               currentTrack?.status === "error" && "text-muted-foreground line-through",
               isPlaying && "text-primary"
             )}>
               {currentTrack?.name || "Unknown"}
             </h2>
             {currentTrack && currentTrack.status !== "error" && (
-              <>
+              <div className="flex items-center gap-1 mb-1 flex-shrink-0">
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8 p-0"
+                  className="opacity-0 group-hover:opacity-100 transition-opacity h-7 w-7 p-0"
                   onClick={() => { setEditName(currentTrack.name.replace(/\.[^.]+$/, "")); setIsEditing(true); }}
                   title="Rename track"
                   disabled={isSaving}
                 >
-                  <Pencil className="w-4 h-4" />
+                  <Pencil className="w-3.5 h-3.5" />
                 </Button>
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8 p-0"
+                  className="opacity-0 group-hover:opacity-100 transition-opacity h-7 w-7 p-0"
                   onClick={() => setShowCoverEditor(true)}
                   title="Edit cover"
                   disabled={isSaving}
                 >
-                  <ImageIcon className="w-4 h-4" />
+                  <ImageIcon className="w-3.5 h-3.5" />
                 </Button>
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8 p-0"
+                  className="opacity-0 group-hover:opacity-100 transition-opacity h-7 w-7 p-0"
                   onClick={() => setShowPrefixPanel(p => !p)}
                   title="Prefix manager"
                   disabled={isSaving}
                 >
-                  <span className="text-xs font-bold text-muted-foreground">[P]</span>
+                  <span className="text-[11px] font-bold text-muted-foreground">[P]</span>
                 </Button>
-              </>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="opacity-0 group-hover:opacity-100 transition-opacity h-7 w-7 p-0"
+                  onClick={() => setShowSuffixPanel(p => !p)}
+                  title="Suffix manager"
+                  disabled={isSaving}
+                >
+                  <span className="text-[11px] font-bold text-muted-foreground">[S]</span>
+                </Button>
+              </div>
             )}
           </div>
         )}
@@ -691,9 +737,11 @@ export function PlayerView() {
         </Button>
       </div>
 
-      {/* ✅ Prefix Panel */}
+      </div>
+
+      {/* ✅ Prefix Panel — снизу, не обрезается */}
       {showPrefixPanel && currentTrack && currentTrack.status !== "error" && (
-        <div className="border-t border-border bg-card/40 px-4 py-3 space-y-2 flex-shrink-0">
+        <div className="border-t border-border bg-card/40 px-4 py-3 space-y-2 flex-shrink-0 overflow-y-auto max-h-64">
           <div className="flex items-center justify-between">
             <span className="text-xs font-medium text-muted-foreground">Filename Prefixes</span>
             <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={() => setShowPrefixPanel(false)}>✗</Button>
@@ -771,6 +819,96 @@ export function PlayerView() {
                   const baseName = t.name.slice(0, t.name.length - ext.length);
                   if (!baseName.startsWith(prefix)) { skip++; continue; }
                   const success = await renameTrack(t.id, baseName.slice(prefix.length));
+                  if (success) ok++; else fail++;
+                }
+                toast.success("Removed from " + ok + " tracks" + (skip > 0 ? ", " + skip + " skipped" : "") + (fail > 0 ? ", " + fail + " failed" : ""));
+              }}>- Remove from all</Button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ✅ Suffix Panel */}
+      {showSuffixPanel && currentTrack && currentTrack.status !== "error" && (
+        <div className="border-t border-border bg-card/40 px-4 py-3 space-y-2 flex-shrink-0 overflow-y-auto max-h-64">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-medium text-muted-foreground">Filename Suffixes</span>
+            <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={() => setShowSuffixPanel(false)}>✗</Button>
+          </div>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={newSuffix}
+              onChange={e => setNewSuffix(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === "Enter" && newSuffix.trim()) {
+                  setSuffixes(prev => [...prev, newSuffix.trim()]);
+                  setNewSuffix("");
+                }
+              }}
+              placeholder="Type suffix and press Enter"
+              className="flex-1 h-7 px-2 text-xs rounded border border-border bg-background focus:outline-none focus:ring-1 focus:ring-primary"
+            />
+            <Button size="sm" className="h-7 px-2 text-xs" onClick={() => {
+              if (newSuffix.trim()) { setSuffixes(prev => [...prev, newSuffix.trim()]); setNewSuffix(""); }
+            }}>Add</Button>
+          </div>
+          {suffixes.length > 0 && (
+            <div className="flex flex-wrap gap-1">
+              {suffixes.map((s, i) => (
+                <div key={i} className="flex items-center gap-1 bg-primary/10 rounded px-2 py-0.5 text-xs">
+                  <span className="font-mono">{s}</span>
+                  <button onClick={() => setSuffixes(prev => prev.filter((_, idx) => idx !== i))} className="text-muted-foreground hover:text-destructive">✗</button>
+                </div>
+              ))}
+            </div>
+          )}
+          {suffixes.length > 0 && (
+            <div className="grid grid-cols-2 gap-1">
+              <Button size="sm" variant="outline" className="h-7 text-xs" onClick={async () => {
+                if (!currentTrack) return;
+                const suffix = suffixes.join(" ");
+                const ext = currentTrack.name.match(/\.[^.]+$/)?.[0] || "";
+                const baseName = currentTrack.name.slice(0, currentTrack.name.length - ext.length);
+                if (baseName.endsWith(" " + suffix)) { toast.info("Suffix already applied"); return; }
+                const newName = baseName + " " + suffix;
+                const success = await renameTrack(currentTrack.id, newName);
+                if (success) toast.success("Suffix applied");
+                else toast.error("Rename failed");
+              }}>+ Apply to current</Button>
+              <Button size="sm" variant="outline" className="h-7 text-xs" onClick={async () => {
+                const suffix = suffixes.join(" ");
+                let ok = 0; let fail = 0;
+                for (const t of tracks) {
+                  if (t.status === "error" || t.status === "moved") continue;
+                  const ext = t.name.match(/\.[^.]+$/)?.[0] || "";
+                  const baseName = t.name.slice(0, t.name.length - ext.length);
+                  if (baseName.endsWith(" " + suffix)) continue;
+                  const success = await renameTrack(t.id, baseName + " " + suffix);
+                  if (success) ok++; else fail++;
+                }
+                toast.success(`Applied to ${ok} tracks${fail > 0 ? ", " + fail + " failed" : ""}`);
+              }}>+ Apply to all</Button>
+              <Button size="sm" variant="outline" className="h-7 text-xs text-orange-400 border-orange-400/30 hover:bg-orange-400/10" onClick={async () => {
+                if (!currentTrack) return;
+                const suffix = " " + suffixes.join(" ");
+                const ext = currentTrack.name.match(/\.[^.]+$/)?.[0] || "";
+                const baseName = currentTrack.name.slice(0, currentTrack.name.length - ext.length);
+                if (!baseName.endsWith(suffix)) { toast.info("Suffix not found in this track"); return; }
+                const newName = baseName.slice(0, baseName.length - suffix.length);
+                const success = await renameTrack(currentTrack.id, newName);
+                if (success) toast.success("Suffix removed");
+                else toast.error("Failed");
+              }}>- Remove from current</Button>
+              <Button size="sm" variant="outline" className="h-7 text-xs text-orange-400 border-orange-400/30 hover:bg-orange-400/10" onClick={async () => {
+                const suffix = " " + suffixes.join(" ");
+                let ok = 0; let skip = 0; let fail = 0;
+                for (const t of tracks) {
+                  if (t.status === "error" || t.status === "moved") continue;
+                  const ext = t.name.match(/\.[^.]+$/)?.[0] || "";
+                  const baseName = t.name.slice(0, t.name.length - ext.length);
+                  if (!baseName.endsWith(suffix)) { skip++; continue; }
+                  const success = await renameTrack(t.id, baseName.slice(0, baseName.length - suffix.length));
                   if (success) ok++; else fail++;
                 }
                 toast.success("Removed from " + ok + " tracks" + (skip > 0 ? ", " + skip + " skipped" : "") + (fail > 0 ? ", " + fail + " failed" : ""));
